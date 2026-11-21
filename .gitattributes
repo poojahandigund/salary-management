@@ -1,0 +1,3 @@
+# Keep line endings as LF in the repo and on checkout, matching .editorconfig and Prettier.
+# Without this, Git on Windows converts files to CRLF and Prettier reports formatting errors.
+* text=auto eol=lf
