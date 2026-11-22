@@ -1,0 +1,9 @@
+{
+  // This package ships as TypeScript source (no build step); the API, the web app and the
+  // tests compile it themselves. This config only type-checks it on its own.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src"]
+}
