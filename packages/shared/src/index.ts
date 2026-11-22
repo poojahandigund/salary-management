@@ -3,3 +3,5 @@ export * from './reference-data/currencies';
 export * from './reference-data/departments';
 export * from './reference-data/enums';
 export * from './reference-data/levels';
+export * from './schemas/employee';
+export * from './schemas/salary';

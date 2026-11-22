@@ -24,7 +24,7 @@ Local setup, done on the developer machine (no commit): Node.js, Git, PostgreSQL
 ## Phase 2: Seed data
 
 - [x] `feat(shared): reference data constants (countries with currency, departments, job titles, levels, exchange rates)`
-- [ ] `feat(shared): zod schemas and types for employees and salaries`
+- [x] `feat(shared): zod schemas and types for employees and salaries`
 - [ ] `feat(api): deterministic seed for 10,000 employees with salary history`
 - [ ] `test(api): seed is deterministic and produces valid data`
 

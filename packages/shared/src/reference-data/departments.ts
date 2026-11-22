@@ -51,6 +51,11 @@ export const DEPARTMENT_NAMES = DEPARTMENTS.map((department) => department.name)
 
 export const JOB_TITLES = DEPARTMENTS.flatMap((department) => department.jobTitles);
 
+/** True when `jobTitle` is one of the job titles listed under `department`. */
+export function isJobTitleInDepartment(department: DepartmentName, jobTitle: JobTitle): boolean {
+  return jobTitlesFor(department).includes(jobTitle);
+}
+
 export function jobTitlesFor(department: DepartmentName): readonly JobTitle[] {
   const found = DEPARTMENTS.find((d) => d.name === department);
   if (found === undefined) {

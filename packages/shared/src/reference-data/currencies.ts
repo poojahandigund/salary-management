@@ -24,3 +24,9 @@ export const EXCHANGE_RATES_TO_USD = {
   AUD: 0.65,
   SGD: 0.74,
 } as const satisfies Record<CurrencyCode, number>;
+
+/**
+ * Every currency we hold a rate for. The cast is safe: the object above is checked with
+ * `satisfies Record<CurrencyCode, number>`, so its keys are exactly the currency codes.
+ */
+export const CURRENCY_CODES = Object.keys(EXCHANGE_RATES_TO_USD) as CurrencyCode[];
