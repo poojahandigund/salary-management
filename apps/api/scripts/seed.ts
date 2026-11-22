@@ -10,44 +10,13 @@ import { z } from 'zod';
 import { parseEnv } from '../src/config/env';
 import { createPool } from '../src/db/pool';
 import { createLogger } from '../src/lib/logger';
-import { DEFAULT_EMPLOYEE_COUNT, generateDataset } from './seed/generate';
+import { USAGE, parseArgs } from './seed/args';
+import { generateDataset } from './seed/generate';
 import { SeedError, seedDatabase } from './seed/write';
-
-const USAGE = 'Usage: seed [--reset] [--count <1-100000>]';
 
 const seedEnvSchema = z.object({
   SEED_RANDOM: z.coerce.number().int().min(0).max(4_294_967_295).default(20260101),
 });
-
-const countSchema = z.coerce.number().int().min(1).max(100_000);
-
-interface Args {
-  reset: boolean;
-  count: number;
-}
-
-// Arguments are checked against a fixed list and validated. They are never used to build
-// a file path, a shell command or a SQL statement.
-function parseArgs(argv: string[]): Args | undefined {
-  let reset = false;
-  let count = DEFAULT_EMPLOYEE_COUNT;
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    if (arg === '--reset') {
-      reset = true;
-    } else if (arg === '--count') {
-      const parsed = countSchema.safeParse(argv[i + 1]);
-      if (!parsed.success) {
-        return undefined;
-      }
-      count = parsed.data;
-      i += 1;
-    } else {
-      return undefined;
-    }
-  }
-  return { reset, count };
-}
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));

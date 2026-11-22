@@ -13,6 +13,9 @@ export class SeedError extends Error {
 export interface WriteOptions {
   /** Delete all existing employees and salary history first. Without it, a non-empty database is refused. */
   reset: boolean;
+  /** Rows per INSERT. The defaults suit real use; tests pass small values to exercise batching cheaply. */
+  employeeBatchSize?: number;
+  salaryBatchSize?: number;
 }
 
 export interface WriteResult {
@@ -28,6 +31,10 @@ const EMPLOYEE_BATCH_SIZE = 2_000;
 const SALARY_BATCH_SIZE = 5_000;
 
 function inBatches<T>(items: readonly T[], size: number): T[][] {
+  // A size below 1 would never advance through the items.
+  if (!Number.isInteger(size) || size < 1) {
+    throw new RangeError('Batch size must be a whole number of at least 1');
+  }
   const batches: T[][] = [];
   for (let start = 0; start < items.length; start += size) {
     batches.push(items.slice(start, start + size));
@@ -70,7 +77,10 @@ export async function writeDataset(
     [rates.map(([currency]) => currency), rates.map(([, rate]) => rate)],
   );
 
-  for (const batch of inBatches(dataset.employees, EMPLOYEE_BATCH_SIZE)) {
+  const employeeBatchSize = options.employeeBatchSize ?? EMPLOYEE_BATCH_SIZE;
+  const salaryBatchSize = options.salaryBatchSize ?? SALARY_BATCH_SIZE;
+
+  for (const batch of inBatches(dataset.employees, employeeBatchSize)) {
     // OVERRIDING SYSTEM VALUE lets us choose the ids (the id column is GENERATED ALWAYS),
     // so every run produces the same ids and salary records can point at them.
     await db.query(
@@ -101,7 +111,7 @@ export async function writeDataset(
     "SELECT setval(pg_get_serial_sequence('employees', 'id'), (SELECT max(id) FROM employees))",
   );
 
-  for (const batch of inBatches(dataset.salaryRecords, SALARY_BATCH_SIZE)) {
+  for (const batch of inBatches(dataset.salaryRecords, salaryBatchSize)) {
     await db.query(
       `INSERT INTO salary_records (employee_id, amount_minor, currency, effective_date, reason)
        SELECT * FROM unnest($1::bigint[], $2::bigint[], $3::text[], $4::date[], $5::text[])`,

@@ -26,7 +26,7 @@ Local setup, done on the developer machine (no commit): Node.js, Git, PostgreSQL
 - [x] `feat(shared): reference data constants (countries with currency, departments, job titles, levels, exchange rates)`
 - [x] `feat(shared): zod schemas and types for employees and salaries`
 - [x] `feat(api): deterministic seed for 10,000 employees with salary history`
-- [ ] `test(api): seed is deterministic and produces valid data`
+- [x] `test(api): seed is deterministic and produces valid data`
 
 Seeding comes before the features so that slow queries show up early, while 10,000 rows are available.
 
