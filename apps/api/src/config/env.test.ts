@@ -11,8 +11,14 @@ describe('parseEnv', () => {
       NODE_ENV: 'development',
       PORT: 4000,
       CORS_ORIGIN: 'http://localhost:5173',
+      LOG_LEVEL: 'info',
       DATABASE_URL,
     });
+  });
+
+  it('accepts a valid LOG_LEVEL and rejects an unknown one', () => {
+    expect(parseEnv({ DATABASE_URL, LOG_LEVEL: 'debug' }).LOG_LEVEL).toBe('debug');
+    expect(() => parseEnv({ DATABASE_URL, LOG_LEVEL: 'loud' })).toThrow(/LOG_LEVEL/);
   });
 
   it('converts PORT from a string to a number', () => {

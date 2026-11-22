@@ -1,3 +1,4 @@
+import type { Logger } from 'pino';
 import { Pool } from 'pg';
 
 /**
@@ -8,7 +9,7 @@ import { Pool } from 'pg';
  * Always pass user-supplied values as query parameters (`$1`, `$2`), never by building
  * SQL strings, to prevent SQL injection.
  */
-export function createPool(databaseUrl: string): Pool {
+export function createPool(databaseUrl: string, logger: Logger): Pool {
   const pool = new Pool({
     connectionString: databaseUrl,
     max: 10,
@@ -18,8 +19,8 @@ export function createPool(databaseUrl: string): Pool {
 
   // An idle connection can fail (for example if the database restarts). Without this
   // listener Node treats the error as unhandled and crashes the whole process.
-  pool.on('error', (error) => {
-    console.error('Unexpected error on an idle database connection:', error.message);
+  pool.on('error', (err) => {
+    logger.error({ err }, 'Unexpected error on an idle database connection');
   });
 
   return pool;

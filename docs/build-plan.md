@@ -17,7 +17,7 @@ Local setup, done on the developer machine (no commit): Node.js, Git, PostgreSQL
 
 - [x] `feat(api): express app with helmet, cors, json parsing and /health`
 - [x] `feat(api): validated env config (zod) and pg pool`
-- [ ] `feat(api): central error handler and request logging (pino)`
+- [x] `feat(api): central error handler and request logging (pino)`
 - [ ] `feat(db): migration for employees table`
 - [ ] `feat(db): migrations for salary_records and exchange_rates`
 

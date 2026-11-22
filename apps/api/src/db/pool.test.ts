@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createLogger } from '../lib/logger';
 import { createPool } from './pool';
 
 // Integration test: needs the PostgreSQL test database (see TEST_DATABASE_URL in .env).
@@ -11,7 +12,7 @@ describe('createPool', () => {
     if (!url) {
       throw new Error('TEST_DATABASE_URL is not set. Add it to .env (see .env.example).');
     }
-    pool = createPool(url);
+    pool = createPool(url, createLogger('silent'));
   });
 
   afterAll(async () => {
