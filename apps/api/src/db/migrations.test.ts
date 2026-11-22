@@ -1,120 +1,76 @@
-import type { Pool } from 'pg';
+import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { getTestDatabaseUrl, resetDatabase } from '../../tests/helpers/test-db';
+import { type TestDatabase, setUpTestDatabase } from '../../tests/helpers/test-db';
 import { createLogger } from '../lib/logger';
 import { runMigrations } from './migrate';
-import { createPool } from './pool';
 
 // Integration test: runs the real SQL migrations against the PostgreSQL test database.
+// The table constraints are tested in the *-table(s).test.ts files next to this one.
 const logger = createLogger('silent');
-const databaseUrl = getTestDatabaseUrl();
 
-const VALID_EMPLOYEE = {
-  first_name: 'Asha',
-  last_name: 'Rao',
-  email: 'asha.rao@acme.com',
-  country_code: 'IN',
-  department: 'Engineering',
-  job_title: 'Software Engineer',
-  level: 3,
-  hire_date: '2022-04-01',
-};
+describe('migrations', () => {
+  let testDb: TestDatabase;
+  let db: PoolClient;
+  let databaseUrl: string;
 
-type EmployeeInput = typeof VALID_EMPLOYEE & { status?: string };
+  async function tableExists(name: string): Promise<boolean> {
+    const { rows } = await db.query('SELECT to_regclass($1) AS found', [`public.${name}`]);
+    return rows[0].found !== null;
+  }
 
-describe('employees migration', () => {
-  let pool: Pool;
-
-  /** Inserts an employee, replacing any fields given in `overrides`. */
-  function insertEmployee(overrides: Partial<EmployeeInput> = {}) {
-    const e: EmployeeInput = { ...VALID_EMPLOYEE, ...overrides };
-    return pool.query(
-      `INSERT INTO employees
-         (first_name, last_name, email, country_code, department, job_title, level, hire_date, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, 'active'))
-       RETURNING *`,
-      [
-        e.first_name,
-        e.last_name,
-        e.email,
-        e.country_code,
-        e.department,
-        e.job_title,
-        e.level,
-        e.hire_date,
-        e.status ?? null,
-      ],
-    );
+  async function functionExists(name: string): Promise<boolean> {
+    const { rows } = await db.query('SELECT 1 FROM pg_proc WHERE proname = $1', [name]);
+    return rows.length > 0;
   }
 
   beforeAll(async () => {
-    pool = createPool(databaseUrl, logger);
-    await resetDatabase(pool);
-    await runMigrations({ databaseUrl, direction: 'up', logger });
+    testDb = await setUpTestDatabase();
+    ({ db, databaseUrl } = testDb);
   });
 
   afterAll(async () => {
-    await pool.end();
+    await testDb.close();
   });
 
+  // Several tests roll migrations back, so start each one from the fully migrated state.
   beforeEach(async () => {
-    await pool.query('TRUNCATE employees RESTART IDENTITY');
+    await runMigrations({ databaseUrl, direction: 'up', logger });
   });
 
-  it('stores a valid employee and fills in id, status and timestamps', async () => {
-    const { rows } = await insertEmployee();
-
-    expect(rows[0]).toMatchObject({
-      id: '1', // BIGINT comes back from pg as a string
-      first_name: 'Asha',
-      country_code: 'IN',
-      level: 3,
-      status: 'active',
-    });
-    expect(rows[0].created_at).toBeInstanceOf(Date);
-    expect(rows[0].updated_at).toBeInstanceOf(Date);
+  it('creates every table', async () => {
+    expect(await tableExists('employees')).toBe(true);
+    expect(await tableExists('exchange_rates')).toBe(true);
+    expect(await tableExists('salary_records')).toBe(true);
   });
 
-  it('rejects a second employee with the same email, ignoring case', async () => {
-    await insertEmployee({ email: 'asha.rao@acme.com' });
-
-    await expect(insertEmployee({ email: 'ASHA.Rao@Acme.com' })).rejects.toMatchObject({
-      code: '23505', // unique_violation
-      constraint: 'employees_email_unique',
-    });
-  });
-
-  it.each([
-    ['status', { status: 'retired' }, 'employees_status_valid'],
-    ['country code in lower case', { country_code: 'in' }, 'employees_country_code_format'],
-    ['country code with one letter', { country_code: 'I' }, 'employees_country_code_format'],
-    ['email without a domain', { email: 'asha@' }, 'employees_email_format'],
-    ['email with spaces', { email: 'asha rao@acme.com' }, 'employees_email_format'],
-    ['level of zero', { level: 0 }, 'employees_level_range'],
-    ['level above the maximum', { level: 11 }, 'employees_level_range'],
-    ['blank first name', { first_name: '   ' }, 'employees_first_name_not_blank'],
-    ['blank department', { department: '' }, 'employees_department_not_blank'],
-  ] as const)('rejects an invalid %s', async (_label, overrides, constraint) => {
-    await expect(insertEmployee(overrides)).rejects.toMatchObject({
-      code: '23514', // check_violation
-      constraint,
-    });
-  });
-
-  it('rejects a country code longer than two characters', async () => {
-    await expect(insertEmployee({ country_code: 'IND' })).rejects.toMatchObject({
-      code: '22001', // string_data_right_truncation, raised by the CHAR(2) type itself
-    });
-  });
-
-  it('can be rolled back and applied again', async () => {
+  it('rolls back only the most recent migration by default', async () => {
     await runMigrations({ databaseUrl, direction: 'down', logger });
-    const afterDown = await pool.query("SELECT to_regclass('public.employees') AS employees");
-    expect(afterDown.rows[0].employees).toBeNull();
+
+    expect(await tableExists('salary_records')).toBe(false);
+    expect(await tableExists('employees')).toBe(true);
+    expect(await tableExists('exchange_rates')).toBe(true);
+  });
+
+  it('removes the append-only trigger function when rolling back', async () => {
+    expect(await functionExists('salary_records_block_changes')).toBe(true);
+
+    await runMigrations({ databaseUrl, direction: 'down', logger });
+
+    expect(await functionExists('salary_records_block_changes')).toBe(false);
+  });
+
+  it('can roll everything back and apply it all again', async () => {
+    await runMigrations({ databaseUrl, direction: 'down', logger, count: Infinity });
+
+    expect(await tableExists('employees')).toBe(false);
+    expect(await tableExists('exchange_rates')).toBe(false);
+    expect(await tableExists('salary_records')).toBe(false);
 
     await runMigrations({ databaseUrl, direction: 'up', logger });
-    const afterUp = await pool.query("SELECT to_regclass('public.employees') AS employees");
-    expect(afterUp.rows[0].employees).toBe('employees');
+
+    expect(await tableExists('employees')).toBe(true);
+    expect(await tableExists('exchange_rates')).toBe(true);
+    expect(await tableExists('salary_records')).toBe(true);
   });
 
   it('is safe to run twice: already applied migrations are skipped', async () => {
