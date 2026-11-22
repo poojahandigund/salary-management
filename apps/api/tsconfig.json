@@ -2,10 +2,11 @@
   // Used by `npm run typecheck` and the editor. Covers source, tests and config files.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // Node16 emits CommonJS here (no "type": "module" in package.json), so relative
-    // imports need no file extensions.
-    "module": "Node16",
-    "moduleResolution": "Node16",
+    // Emits CommonJS here (no "type": "module" in package.json), so relative
+    // imports need no file extensions. NodeNext (rather than Node16) also lets CommonJS
+    // code import ESM-only packages such as @faker-js/faker, which Node can load with require().
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "types": ["node"]
   },
   "include": ["src", "tests", "scripts", "vitest.config.mts"]
