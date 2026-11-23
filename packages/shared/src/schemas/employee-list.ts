@@ -39,7 +39,7 @@ export const STATUS_FILTERS = [...EMPLOYEE_STATUSES, 'all'] as const;
 export type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 /** A whole number in query-string form ("3"). Rejects "", "abc" and "1.5". */
-const wholeNumber = (label: string) =>
+export const wholeNumber = (label: string) =>
   z
     .string()
     .regex(/^\d{1,9}$/, `${label} must be a whole number`)

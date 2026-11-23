@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   SALARY_GROUPINGS,
   insightsSummarySchema,
+  salaryDistributionQuerySchema,
+  salaryDistributionSchema,
   salaryStatsQuerySchema,
   salaryStatsSchema,
 } from './insights';
@@ -113,5 +115,74 @@ describe('salaryStatsSchema (API response)', () => {
     };
 
     expect(salaryStatsSchema.safeParse(stats).success).toBe(false);
+  });
+});
+
+describe('salaryDistributionQuerySchema', () => {
+  it('accepts no parameters', () => {
+    expect(salaryDistributionQuerySchema.parse({})).toEqual({});
+  });
+
+  it('accepts filters and a bucket count, as numbers', () => {
+    expect(
+      salaryDistributionQuerySchema.parse({ country: 'GB', level: '4', buckets: '10' }),
+    ).toEqual({
+      country: 'GB',
+      level: 4,
+      buckets: 10,
+    });
+  });
+
+  it.each([
+    ['the smallest allowed bucket count', '2', true],
+    ['the largest allowed bucket count', '50', true],
+    ['one bucket', '1', false],
+    ['too many buckets', '51', false],
+    ['a fraction', '2.5', false],
+    ['text', 'many', false],
+  ])('buckets: %s', (_label, buckets, ok) => {
+    expect(salaryDistributionQuerySchema.safeParse({ buckets }).success).toBe(ok);
+  });
+
+  it('rejects an unknown parameter', () => {
+    expect(salaryDistributionQuerySchema.safeParse({ groupBy: 'country' }).success).toBe(false);
+  });
+});
+
+describe('salaryDistributionSchema (API response)', () => {
+  it('accepts a histogram in the shape the API sends', () => {
+    const histogram = {
+      currency: 'USD',
+      headcount: 3,
+      bucketWidthUsdMinor: 500_000,
+      buckets: [
+        { fromUsdMinor: 0, toUsdMinor: 500_000, count: 3 },
+        { fromUsdMinor: 500_000, toUsdMinor: 1_000_000, count: 0 },
+      ],
+    };
+
+    expect(salaryDistributionSchema.parse(histogram)).toEqual(histogram);
+  });
+
+  it('accepts an empty histogram', () => {
+    expect(
+      salaryDistributionSchema.safeParse({
+        currency: 'USD',
+        headcount: 0,
+        bucketWidthUsdMinor: null,
+        buckets: [],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects a bucket width of 0', () => {
+    expect(
+      salaryDistributionSchema.safeParse({
+        currency: 'USD',
+        headcount: 0,
+        bucketWidthUsdMinor: 0,
+        buckets: [],
+      }).success,
+    ).toBe(false);
   });
 });

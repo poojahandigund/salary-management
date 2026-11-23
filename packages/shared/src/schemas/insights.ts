@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { COUNTRY_CODES } from '../reference-data/countries';
 import { REPORTING_CURRENCY } from '../reference-data/currencies';
 import { DEPARTMENT_NAMES } from '../reference-data/departments';
-import { employeeFilterFields } from './employee-list';
+import { employeeFilterFields, wholeNumber } from './employee-list';
 
 /**
  * Insights describe the people on the payroll today: active employees, each at their
@@ -74,3 +74,48 @@ export const salaryStatsSchema = z.object({
   groups: z.array(salaryStatsGroupSchema),
 });
 export type SalaryStats = z.infer<typeof salaryStatsSchema>;
+
+export const DEFAULT_HISTOGRAM_BUCKETS = 20;
+export const MIN_HISTOGRAM_BUCKETS = 2;
+export const MAX_HISTOGRAM_BUCKETS = 50;
+
+/**
+ * Query of the salary histogram: optional filters, and roughly how many bars to aim for.
+ * The real number of bars can differ by one or two, because bar widths are rounded to
+ * round numbers.
+ */
+export const salaryDistributionQuerySchema = z.strictObject({
+  ...employeeFilterFields,
+  buckets: wholeNumber('Buckets')
+    .pipe(
+      z
+        .number()
+        .min(MIN_HISTOGRAM_BUCKETS, `Use at least ${MIN_HISTOGRAM_BUCKETS} buckets`)
+        .max(MAX_HISTOGRAM_BUCKETS, `Use at most ${MAX_HISTOGRAM_BUCKETS} buckets`),
+    )
+    .optional(),
+});
+export type SalaryDistributionQuery = z.output<typeof salaryDistributionQuerySchema>;
+
+export const salaryBucketSchema = z.object({
+  /** Lowest salary in the bucket, in US cents (included). */
+  fromUsdMinor: usdMinor,
+  /** Where the next bucket starts, in US cents (not included). */
+  toUsdMinor: usdMinor,
+  count: z.number().int().nonnegative(),
+});
+export type SalaryBucket = z.infer<typeof salaryBucketSchema>;
+
+/**
+ * How current salaries are spread: equal-width buckets from the lowest to the highest
+ * salary, with empty buckets in between kept so the shape is honest.
+ */
+export const salaryDistributionSchema = z.object({
+  currency: z.literal(REPORTING_CURRENCY),
+  /** People counted (active, with a salary, matching the filters). */
+  headcount: z.number().int().nonnegative(),
+  /** Width of every bucket in US cents; null when nobody is counted. */
+  bucketWidthUsdMinor: z.number().int().positive().nullable(),
+  buckets: z.array(salaryBucketSchema),
+});
+export type SalaryDistribution = z.infer<typeof salaryDistributionSchema>;
