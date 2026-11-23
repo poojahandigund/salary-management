@@ -25,6 +25,7 @@ The choices below favour tools that are well known, simple to reason about, and 
 | Seed data    | @faker-js/faker with a fixed seed           | Realistic, reproducible 10,000-employee dataset.                                                                           |
 | Auth         | bcrypt + JWT in an httpOnly cookie          | See [Authentication](#authentication).                                                                                     |
 | Security     | helmet, cors, express-rate-limit            | Safe HTTP headers, only the frontend origin may call the API, and brute-force protection on login.                         |
+| API build    | esbuild                                     | Bundles the API with the shared package into one file that plain `node` can run; other dependencies stay external.         |
 | Logging      | pino + pino-http                            | Structured JSON request logs with sensitive fields (cookies, passwords) redacted.                                          |
 | Testing      | Vitest, React Testing Library, Supertest    | See [Testing](#testing).                                                                                                   |
 | Code quality | ESLint + Prettier                           | Consistent style and catches common mistakes.                                                                              |
@@ -34,12 +35,21 @@ The choices below favour tools that are well known, simple to reason about, and 
 
 There is one user: the HR manager.
 
-- The username and a **bcrypt hash** of the password are stored in environment variables, never in code.
-- `POST /api/auth/login` checks the password against the hash. On success the server signs a short-lived **JWT** and sets it in a cookie that is `httpOnly` (JavaScript cannot read it), `Secure` (HTTPS only) and `SameSite=Strict` (not sent from other sites).
+- The username and a **bcrypt hash** of the password are stored in environment variables, never in code. `npm run hash-password -w @acme/api` creates the hash from a hidden prompt, so the password is never on screen or in shell history.
+- `POST /api/auth/login` checks the password against the hash. On success the server signs a short-lived **JWT** and sets it in a cookie that is `httpOnly` (JavaScript cannot read it), `Secure` (HTTPS only, in production) and `SameSite=Strict` (not sent from other sites).
 - An auth middleware verifies the cookie on every other `/api` route and returns `401` if it is missing or invalid.
 - `POST /api/auth/logout` clears the cookie. The login route is rate-limited.
 
 A JWT cookie is used instead of server-side sessions because it needs no session store. That is enough for a single user.
+
+**Deployment shape:** `SameSite=Strict` only works when the web app and the API are the same site. In development a Vite proxy forwards `/api` to the API; in production one service serves both the built web app and the API. With that setup no CSRF token is needed.
+
+**Token and password handling:**
+
+- Tokens are signed with HS256 only. Verification pins that algorithm (a token claiming `none` or another algorithm is rejected) and checks issuer, audience and expiry. A secret under 32 characters is refused at startup.
+- bcrypt uses cost 12 and only reads the first 72 bytes of a password, so longer passwords are refused rather than silently cut off.
+- **Trade-off:** a JWT cannot be revoked before it expires. Logout deletes the cookie, but a copied token stays valid until it expires (8 hours by default, at most 7 days). Changing `JWT_SECRET` ends every session at once.
+- Out of scope for a single-user tool: registration, password reset, roles, refresh tokens, MFA and account lockout beyond the login rate limit.
 
 ## Testing
 

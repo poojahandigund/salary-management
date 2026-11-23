@@ -1,11 +1,10 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
+import { WEB_ORIGIN, createTestApp } from '../tests/helpers/app';
 import { createLogCapture } from '../tests/helpers/log-capture';
-import { createApp } from './app';
 import { createLogger } from './lib/logger';
 
-const WEB_ORIGIN = 'http://localhost:5173';
-const app = createApp({ corsOrigin: WEB_ORIGIN, logger: createLogger('silent') });
+const app = createTestApp();
 
 describe('GET /health', () => {
   it('responds 200 with status ok', async () => {
@@ -45,7 +44,7 @@ describe('CORS', () => {
 
 describe('unknown routes', () => {
   it('return the JSON error format, with a requestId that matches the response header', async () => {
-    const res = await request(app).get('/api/does-not-exist');
+    const res = await request(app).get('/does-not-exist');
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('ROUTE_NOT_FOUND');
@@ -64,12 +63,9 @@ describe('unknown routes', () => {
 describe('request logging', () => {
   it('logs each request with its status code and request id', async () => {
     const capture = createLogCapture();
-    const loggedApp = createApp({
-      corsOrigin: WEB_ORIGIN,
-      logger: createLogger('info', capture.stream),
-    });
+    const loggedApp = createTestApp({ logger: createLogger('info', capture.stream) });
 
-    const res = await request(loggedApp).get('/api/does-not-exist');
+    const res = await request(loggedApp).get('/does-not-exist');
 
     // The log line is written when the response finishes, which can be just after the
     // client receives it, so wait for it instead of assuming the order.
@@ -80,7 +76,7 @@ describe('request logging', () => {
       req: {
         id: res.headers['x-request-id'], // the same id the caller received
         method: 'GET',
-        url: '/api/does-not-exist',
+        url: '/does-not-exist',
       },
       res: { statusCode: 404 },
     });
@@ -88,13 +84,10 @@ describe('request logging', () => {
 
   it('never writes cookies or authorization headers to the log', async () => {
     const capture = createLogCapture();
-    const loggedApp = createApp({
-      corsOrigin: WEB_ORIGIN,
-      logger: createLogger('info', capture.stream),
-    });
+    const loggedApp = createTestApp({ logger: createLogger('info', capture.stream) });
 
     await request(loggedApp)
-      .get('/api/does-not-exist')
+      .get('/does-not-exist')
       .set('Cookie', 'session=super-secret-cookie')
       .set('Authorization', 'Bearer super-secret-token');
 
@@ -105,15 +98,12 @@ describe('request logging', () => {
 
   it('does not log health checks', async () => {
     const capture = createLogCapture();
-    const loggedApp = createApp({
-      corsOrigin: WEB_ORIGIN,
-      logger: createLogger('info', capture.stream),
-    });
+    const loggedApp = createTestApp({ logger: createLogger('info', capture.stream) });
 
     await request(loggedApp).get('/health');
     // A request that is logged, sent after the health check, proves the logger works and
     // that /health was skipped (rather than just not written yet).
-    await request(loggedApp).get('/api/does-not-exist');
+    await request(loggedApp).get('/does-not-exist');
 
     await expect.poll(() => capture.entries().length).toBe(1);
     expect(capture.text()).not.toContain('"/health"');

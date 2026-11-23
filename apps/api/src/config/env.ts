@@ -1,14 +1,41 @@
 import { z } from 'zod';
+import { BCRYPT_HASH_PATTERN, MAX_SESSION_SECONDS, MIN_JWT_SECRET_LENGTH } from '../auth/limits';
+import { parseDurationSeconds } from '../lib/duration';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   CORS_ORIGIN: z.url().default('http://localhost:5173'),
+  // Number of reverse proxies in front of the server (0 = none, the local default). Set it
+  // when deployed behind one, so the login rate limit sees real client addresses.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().refine((value) => /^postgres(ql)?:\/\//.test(value), {
     // The message deliberately does not include the value: it contains the DB password.
     error: 'must be a connection string starting with postgres:// or postgresql://',
   }),
+
+  // The single HR manager account. The messages below say what is wrong but never repeat
+  // the value, because all three of these are secrets or close to it.
+  HR_USERNAME: z.string().trim().min(1, 'is required').max(100, 'must be at most 100 characters'),
+  HR_PASSWORD_HASH: z.string().refine((value) => BCRYPT_HASH_PATTERN.test(value), {
+    error:
+      'must be a bcrypt hash (starting with $2b$), not the password itself. ' +
+      "Create one with `npm run hash-password -w @acme/api` and wrap it in single quotes in .env, because it contains '$'",
+  }),
+  JWT_SECRET: z
+    .string()
+    .min(MIN_JWT_SECRET_LENGTH, `must be at least ${MIN_JWT_SECRET_LENGTH} characters`),
+  JWT_EXPIRES_IN: z
+    .string()
+    .default('8h')
+    .refine(
+      (value) => {
+        const seconds = parseDurationSeconds(value);
+        return seconds !== undefined && seconds <= MAX_SESSION_SECONDS;
+      },
+      { error: 'must be a duration such as 30m, 8h or 2d, and at most 7d' },
+    ),
 });
 
 export type Env = z.infer<typeof envSchema>;
