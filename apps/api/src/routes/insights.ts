@@ -1,7 +1,12 @@
-import { salaryDistributionQuerySchema, salaryStatsQuerySchema } from '@acme/shared';
+import {
+  outliersQuerySchema,
+  salaryDistributionQuerySchema,
+  salaryStatsQuerySchema,
+} from '@acme/shared';
 import { Router } from 'express';
 import type { Pool } from 'pg';
 import { getSalaryDistribution } from '../insights/histogram';
+import { getOutliers } from '../insights/outliers';
 import { getSalaryStats } from '../insights/salary-stats';
 import { getInsightsSummary } from '../insights/summary';
 
@@ -22,6 +27,11 @@ export function createInsightsRouter({ pool }: { pool: Pool }): Router {
   router.get('/salary-distribution', async (req, res) => {
     const query = salaryDistributionQuerySchema.parse(req.query);
     res.json(await getSalaryDistribution(pool, query));
+  });
+
+  router.get('/outliers', async (req, res) => {
+    const query = outliersQuerySchema.parse(req.query);
+    res.json(await getOutliers(pool, query));
   });
 
   return router;

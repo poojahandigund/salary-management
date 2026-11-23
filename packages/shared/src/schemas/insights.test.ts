@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   SALARY_GROUPINGS,
   insightsSummarySchema,
+  outliersQuerySchema,
+  outliersSchema,
   salaryDistributionQuerySchema,
   salaryDistributionSchema,
   salaryStatsQuerySchema,
@@ -184,5 +186,75 @@ describe('salaryDistributionSchema (API response)', () => {
         buckets: [],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('outliersQuerySchema', () => {
+  it('accepts no parameters', () => {
+    expect(outliersQuerySchema.parse({})).toEqual({});
+  });
+
+  it('accepts filters and a limit, as numbers', () => {
+    expect(outliersQuerySchema.parse({ department: 'Sales', limit: '25' })).toEqual({
+      department: 'Sales',
+      limit: 25,
+    });
+  });
+
+  it.each([
+    ['the smallest limit', '1', true],
+    ['the largest limit', '200', true],
+    ['a limit of 0', '0', false],
+    ['a limit over the maximum', '201', false],
+    ['a fraction', '1.5', false],
+    ['text', 'all', false],
+  ])('limit: %s', (_label, limit, ok) => {
+    expect(outliersQuerySchema.safeParse({ limit }).success).toBe(ok);
+  });
+
+  it('rejects an unknown parameter', () => {
+    expect(outliersQuerySchema.safeParse({ sort: 'score' }).success).toBe(false);
+  });
+});
+
+describe('outliersSchema (API response)', () => {
+  const item = {
+    employee: {
+      id: 7,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      countryCode: 'GB',
+      department: 'Engineering',
+      jobTitle: 'Software Engineer',
+      level: 4,
+    },
+    salaryUsdMinor: 25_000_000,
+    peerCount: 6,
+    peerMedianUsdMinor: 10_000_000,
+    percentFromMedian: 150,
+    score: 40.5,
+    direction: 'above',
+  };
+
+  it('accepts outliers in the shape the API sends', () => {
+    const outliers = { currency: 'USD', total: 3, items: [item] };
+
+    expect(outliersSchema.parse(outliers)).toEqual(outliers);
+  });
+
+  it('accepts a negative distance for someone paid below their peers', () => {
+    const below = { ...item, percentFromMedian: -60, score: -12, direction: 'below' };
+
+    expect(outliersSchema.safeParse({ currency: 'USD', total: 1, items: [below] }).success).toBe(
+      true,
+    );
+  });
+
+  it('rejects an unknown direction', () => {
+    const sideways = { ...item, direction: 'sideways' };
+
+    expect(outliersSchema.safeParse({ currency: 'USD', total: 1, items: [sideways] }).success).toBe(
+      false,
+    );
   });
 });

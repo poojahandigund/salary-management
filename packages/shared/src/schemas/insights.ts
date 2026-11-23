@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { COUNTRY_CODES } from '../reference-data/countries';
 import { REPORTING_CURRENCY } from '../reference-data/currencies';
-import { DEPARTMENT_NAMES } from '../reference-data/departments';
+import { DEPARTMENT_NAMES, JOB_TITLES } from '../reference-data/departments';
+import { MAX_LEVEL, MIN_LEVEL } from '../reference-data/levels';
 import { employeeFilterFields, wholeNumber } from './employee-list';
 
 /**
@@ -119,3 +120,59 @@ export const salaryDistributionSchema = z.object({
   buckets: z.array(salaryBucketSchema),
 });
 export type SalaryDistribution = z.infer<typeof salaryDistributionSchema>;
+
+export const DEFAULT_OUTLIER_LIMIT = 50;
+export const MAX_OUTLIER_LIMIT = 200;
+
+/**
+ * Query of the outlier report. The filters narrow which outliers are listed (a person is
+ * still compared with all of their peers, so filtering never changes who is an outlier);
+ * `limit` caps the list, strongest outliers first.
+ */
+export const outliersQuerySchema = z.strictObject({
+  ...employeeFilterFields,
+  limit: wholeNumber('Limit')
+    .pipe(
+      z
+        .number()
+        .min(1, 'Limit must be at least 1')
+        .max(MAX_OUTLIER_LIMIT, `Limit must be at most ${MAX_OUTLIER_LIMIT}`),
+    )
+    .optional(),
+});
+export type OutliersQuery = z.output<typeof outliersQuerySchema>;
+
+export const OUTLIER_DIRECTIONS = ['above', 'below'] as const;
+export type OutlierDirection = (typeof OUTLIER_DIRECTIONS)[number];
+
+export const outlierSchema = z.object({
+  employee: z.object({
+    id: z.number().int().positive(),
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    countryCode: z.enum(COUNTRY_CODES),
+    department: z.enum(DEPARTMENT_NAMES),
+    jobTitle: z.enum(JOB_TITLES),
+    level: z.number().int().min(MIN_LEVEL).max(MAX_LEVEL),
+  }),
+  /** The person's current salary in US cents. */
+  salaryUsdMinor: usdMinor,
+  /** People in the comparison group, the person included: same job title, level and country. */
+  peerCount: z.number().int().positive(),
+  peerMedianUsdMinor: usdMinor,
+  /** How far the salary is from the peer median: +62.5 means 62.5% above it. */
+  percentFromMedian: z.number(),
+  /** Modified z-score: how many typical spreads from the median. Negative when below. */
+  score: z.number(),
+  direction: z.enum(OUTLIER_DIRECTIONS),
+});
+export type Outlier = z.infer<typeof outlierSchema>;
+
+/** People paid unusually far from their peers, strongest first. */
+export const outliersSchema = z.object({
+  currency: z.literal(REPORTING_CURRENCY),
+  /** All outliers that match the filters; `items` may hold fewer because of the limit. */
+  total: z.number().int().nonnegative(),
+  items: z.array(outlierSchema),
+});
+export type Outliers = z.infer<typeof outliersSchema>;
