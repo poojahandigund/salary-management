@@ -39,3 +39,21 @@ export function minorToMajorText(amountMinor: number): string {
   const fraction = amountMinor % 100;
   return fraction === 0 ? String(whole) : `${whole}.${String(fraction).padStart(2, '0')}`;
 }
+
+/**
+ * A US-dollar amount given in cents, for reports: whole dollars ("$1,234,568"), or short
+ * ("$1.2M") with `compact`. Reports are not about cents, and short figures fit in cards.
+ */
+export function formatUsd(
+  usdMinor: number,
+  { compact = false }: { compact?: boolean } = {},
+): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    // Currencies default to 2 decimals as a minimum, which would clash with the maximum.
+    minimumFractionDigits: 0,
+    maximumFractionDigits: compact ? 1 : 0,
+    ...(compact ? { notation: 'compact' as const } : {}),
+  }).format(usdMinor / 100);
+}

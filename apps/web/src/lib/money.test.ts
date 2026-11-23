@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CURRENCY_CODES } from '@acme/shared';
-import { formatMoney, minorToMajorText, parseMajorToMinor } from './money';
+import { formatMoney, formatUsd, minorToMajorText, parseMajorToMinor } from './money';
 
 describe('parseMajorToMinor', () => {
   it.each([
@@ -77,5 +77,33 @@ describe('formatMoney', () => {
   it('gives every supported currency a different look for the same amount', () => {
     const shown = CURRENCY_CODES.map((currency) => formatMoney(5_000_000, currency));
     expect(new Set(shown).size).toBe(CURRENCY_CODES.length);
+  });
+});
+
+describe('formatUsd', () => {
+  it.each([
+    [0, '$0'],
+    [100, '$1'],
+    [123_456_789, '$1,234,568'],
+    [9_000_000_000, '$90,000,000'],
+    [-250_000, '-$2,500'],
+  ])('shows %i cents as whole dollars: %s', (cents, shown) => {
+    expect(formatUsd(cents)).toBe(shown);
+  });
+
+  it('rounds to the nearest dollar', () => {
+    expect(formatUsd(149)).toBe('$1');
+    expect(formatUsd(150)).toBe('$2');
+  });
+
+  it.each([
+    [0, '$0'],
+    [95_000_00, '$95K'],
+    [100_000_000, '$1M'],
+    [123_456_789_00, '$123.5M'],
+    [91_000_000_000_00, '$91B'],
+    [1_234_000_000_00, '$1.2B'],
+  ])('shows %i cents in short form: %s', (cents, shown) => {
+    expect(formatUsd(cents, { compact: true })).toBe(shown);
   });
 });

@@ -5,6 +5,7 @@ import { EmployeeCreatePage } from './pages/EmployeeCreatePage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
 import { EmployeeDirectoryPage } from './pages/EmployeeDirectoryPage';
 import { EmployeeEditPage } from './pages/EmployeeEditPage';
+import { InsightsPage } from './pages/InsightsPage';
 import { LoginPage } from './pages/LoginPage';
 
 export function App() {
@@ -19,6 +20,7 @@ export function App() {
           <Route path="/employees/new" element={<EmployeeCreatePage />} />
           <Route path="/employees/:id" element={<EmployeeDetailPage />} />
           <Route path="/employees/:id/edit" element={<EmployeeEditPage />} />
+          <Route path="/insights" element={<InsightsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

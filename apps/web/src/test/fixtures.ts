@@ -1,4 +1,10 @@
-import type { Employee, EmployeePage, SalaryRecord } from '@acme/shared';
+import type {
+  Employee,
+  EmployeePage,
+  InsightsSummary,
+  SalaryRecord,
+  SalaryStats,
+} from '@acme/shared';
 
 let nextId = 1;
 
@@ -53,6 +59,57 @@ export function makeSalaryRecord(overrides: Partial<SalaryRecord> = {}): SalaryR
     effectiveDate: '2022-04-01',
     reason: 'hire',
     createdAt: '2022-04-01T09:00:00.000Z',
+    ...overrides,
+  };
+}
+
+/** A company of three: two in the US, one in India (USD 300,000.00 a year in total). */
+export function makeSummary(overrides: Partial<InsightsSummary> = {}): InsightsSummary {
+  return {
+    currency: 'USD',
+    totals: { headcount: 3, payrollUsdMinor: 30_000_000 },
+    byCountry: [
+      { countryCode: 'US', headcount: 2, payrollUsdMinor: 20_000_000 },
+      { countryCode: 'IN', headcount: 1, payrollUsdMinor: 10_000_000 },
+    ],
+    byDepartment: [
+      { department: 'Engineering', headcount: 2, payrollUsdMinor: 22_000_000 },
+      { department: 'Sales', headcount: 1, payrollUsdMinor: 8_000_000 },
+    ],
+    ...overrides,
+  };
+}
+
+/** Salary statistics by country for the same company as `makeSummary`. */
+export function makeStats(overrides: Partial<SalaryStats> = {}): SalaryStats {
+  return {
+    currency: 'USD',
+    groupBy: 'country',
+    overall: {
+      headcount: 3,
+      minUsdMinor: 8_000_000,
+      medianUsdMinor: 10_000_000,
+      averageUsdMinor: 10_000_000,
+      maxUsdMinor: 12_000_000,
+    },
+    groups: [
+      {
+        key: 'US',
+        headcount: 2,
+        minUsdMinor: 8_000_000,
+        medianUsdMinor: 10_000_000,
+        averageUsdMinor: 10_000_000,
+        maxUsdMinor: 12_000_000,
+      },
+      {
+        key: 'IN',
+        headcount: 1,
+        minUsdMinor: 10_000_000,
+        medianUsdMinor: 10_000_000,
+        averageUsdMinor: 10_000_000,
+        maxUsdMinor: 10_000_000,
+      },
+    ],
     ...overrides,
   };
 }
