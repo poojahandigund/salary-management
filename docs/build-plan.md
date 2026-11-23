@@ -34,7 +34,7 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 
 - [x] `feat(api): password hashing and JWT sign/verify helpers`
 - [x] `feat(api): login/logout routes and requireAuth middleware`
-- [ ] `test(api): auth API tests`
+- [x] `test(api): auth API tests`
 
 ## Phase 4: Employees (backend, then UI)
 
