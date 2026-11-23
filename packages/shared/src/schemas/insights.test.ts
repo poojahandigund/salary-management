@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { insightsSummarySchema } from './insights';
+import {
+  SALARY_GROUPINGS,
+  insightsSummarySchema,
+  salaryStatsQuerySchema,
+  salaryStatsSchema,
+} from './insights';
 
 describe('insightsSummarySchema (API response)', () => {
   const summary = {
@@ -42,5 +47,71 @@ describe('insightsSummarySchema (API response)', () => {
     ['a missing list', { byCountry: undefined }],
   ])('rejects %s', (_label, change) => {
     expect(insightsSummarySchema.safeParse({ ...summary, ...change }).success).toBe(false);
+  });
+});
+
+describe('salaryStatsQuerySchema', () => {
+  it.each(SALARY_GROUPINGS)('accepts grouping by %s', (groupBy) => {
+    expect(salaryStatsQuerySchema.parse({ groupBy })).toEqual({ groupBy });
+  });
+
+  it('accepts filters and turns the level into a number', () => {
+    expect(
+      salaryStatsQuerySchema.parse({
+        groupBy: 'jobTitle',
+        country: 'IN',
+        department: 'Sales',
+        level: '3',
+      }),
+    ).toEqual({ groupBy: 'jobTitle', country: 'IN', department: 'Sales', level: 3 });
+  });
+
+  it.each([
+    ['no grouping', {}],
+    ['an unknown grouping', { groupBy: 'status' }],
+    ['an unknown country', { groupBy: 'level', country: 'ZZ' }],
+    ['a level of 0', { groupBy: 'country', level: '0' }],
+    ['an unknown parameter', { groupBy: 'country', page: '2' }],
+  ])('rejects %s', (_label, query) => {
+    expect(salaryStatsQuerySchema.safeParse(query).success).toBe(false);
+  });
+});
+
+describe('salaryStatsSchema (API response)', () => {
+  const figures = {
+    headcount: 2,
+    minUsdMinor: 100,
+    medianUsdMinor: 150,
+    averageUsdMinor: 150,
+    maxUsdMinor: 200,
+  };
+
+  it('accepts stats in the shape the API sends', () => {
+    const stats = {
+      currency: 'USD',
+      groupBy: 'country',
+      overall: figures,
+      groups: [{ key: 'US', ...figures }],
+    };
+
+    expect(salaryStatsSchema.parse(stats)).toEqual(stats);
+  });
+
+  it('accepts no one at all', () => {
+    expect(
+      salaryStatsSchema.safeParse({ currency: 'USD', groupBy: 'level', overall: null, groups: [] })
+        .success,
+    ).toBe(true);
+  });
+
+  it('rejects a group with nobody in it', () => {
+    const stats = {
+      currency: 'USD',
+      groupBy: 'country',
+      overall: null,
+      groups: [{ key: 'US', ...figures, headcount: 0 }],
+    };
+
+    expect(salaryStatsSchema.safeParse(stats).success).toBe(false);
   });
 });
