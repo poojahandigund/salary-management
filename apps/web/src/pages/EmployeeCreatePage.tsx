@@ -1,4 +1,4 @@
-﻿import type { CreateEmployeeInput } from '@acme/shared';
+import type { CreateEmployeeInput } from '@acme/shared';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { useCreateEmployee } from '@/api/employees';
@@ -11,7 +11,7 @@ export function EmployeeCreatePage() {
   const onSubmit = async (input: CreateEmployeeInput) => {
     const employee = await create.mutateAsync(input);
     toast.success(`${employee.firstName} ${employee.lastName} was added.`);
-    void navigate('/employees');
+    void navigate(`/employees/${employee.id}`);
   };
 
   return (

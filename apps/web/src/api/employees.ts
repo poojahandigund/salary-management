@@ -71,3 +71,13 @@ export function useUpdateEmployee(id: number) {
     onSuccess: (employee) => refresh(employee),
   });
 }
+
+/** Deactivate or reactivate. Nothing is deleted; the employee's salary history stays. */
+export function useSetEmployeeStatus(id: number) {
+  const refresh = useRefreshEmployees();
+  return useMutation({
+    mutationFn: (action: 'deactivate' | 'reactivate') =>
+      apiRequest(`/api/employees/${id}/${action}`, { method: 'POST', schema: employeeSchema }),
+    onSuccess: (employee) => refresh(employee),
+  });
+}

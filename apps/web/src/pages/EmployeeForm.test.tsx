@@ -162,19 +162,27 @@ describe('add employee form', () => {
     });
   });
 
-  it('goes back to the directory and refreshes it after adding', async () => {
-    const { user, api } = openAt('/employees/new', {
-      'POST /api/employees': reply(201, makeEmployee({ id: 99 })),
+  it('opens the new employee’s page, and the directory then lists them', async () => {
+    const created = makeEmployee({ id: 99, firstName: 'Meera', lastName: 'Iyer' });
+    let listed = [asha];
+    const { user } = openAt('/employees', {
+      'GET /api/employees': () => reply(200, makePage(listed)),
+      'POST /api/employees': () => {
+        listed = [asha, created];
+        return reply(201, created);
+      },
+      'GET /api/employees/99': reply(200, created),
     });
+    await user.click(await screen.findByRole('link', { name: 'Add employee' }));
     await screen.findByRole('heading', { name: 'Add employee' });
     await fillAddForm(user);
 
     await user.click(screen.getByRole('button', { name: 'Add employee' }));
 
-    expect(await screen.findByRole('heading', { name: 'Employees' })).toBeInTheDocument();
-    expect(api.callsTo('GET /api/employees').length).toBeGreaterThan(0);
+    expect(await screen.findByRole('heading', { name: 'Meera Iyer' })).toBeInTheDocument();
+    await user.click(screen.getAllByRole('link', { name: 'Employees' })[0] as HTMLElement);
+    expect(await screen.findByRole('link', { name: 'Meera Iyer' })).toBeInTheDocument();
   });
-
   it.each([
     ['not an amount', 'lots', 'Enter an amount such as 85000 or 85000.50'],
     ['too many decimals', '1.234', 'Enter an amount such as 85000 or 85000.50'],
@@ -225,6 +233,25 @@ describe('add employee form', () => {
     expect(screen.getByLabelText('First name')).toHaveValue('Meera');
   });
 
+  it('clears a server-reported email problem as soon as the email is edited', async () => {
+    const { user } = openAt('/employees/new', {
+      'POST /api/employees': apiError(
+        409,
+        'EMAIL_ALREADY_EXISTS',
+        'An employee with this email already exists',
+        [{ path: 'email', message: 'An employee with this email already exists' }],
+      ),
+    });
+    await screen.findByRole('heading', { name: 'Add employee' });
+    await fillAddForm(user);
+    await user.click(screen.getByRole('button', { name: 'Add employee' }));
+    await screen.findByText('An employee with this email already exists');
+
+    await user.type(screen.getByLabelText('Email'), 'x');
+
+    await waitFor(() => expect(document.getElementById('email-error')).not.toBeInTheDocument());
+    expect(screen.getByLabelText('Email')).not.toHaveAttribute('aria-invalid');
+  });
   it('places a salary problem reported by the server on the salary field', async () => {
     const { user } = openAt('/employees/new', {
       'POST /api/employees': apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
@@ -256,6 +283,10 @@ describe('add employee form', () => {
     let release: (answer: MockReply) => void = () => undefined;
     const { user, api } = openAt('/employees/new', {
       'POST /api/employees': () => new Promise<MockReply>((resolve) => (release = resolve)),
+      'GET /api/employees/99': reply(
+        200,
+        makeEmployee({ id: 99, firstName: 'Meera', lastName: 'Iyer' }),
+      ),
     });
     await screen.findByRole('heading', { name: 'Add employee' });
     await fillAddForm(user);
@@ -267,8 +298,8 @@ describe('add employee form', () => {
     await user.click(screen.getByRole('button', { name: 'Add employee' }));
 
     expect(api.callsTo('POST /api/employees')).toHaveLength(1);
-    release(reply(201, makeEmployee({ id: 99 })));
-    await screen.findByRole('heading', { name: 'Employees' });
+    release(reply(201, makeEmployee({ id: 99, firstName: 'Meera', lastName: 'Iyer' })));
+    await screen.findByRole('heading', { name: 'Meera Iyer' });
   });
 });
 
@@ -338,7 +369,7 @@ describe('edit employee form', () => {
     expect(api.callsTo('PATCH /api/employees/7')).toHaveLength(0);
   });
 
-  it('saves a new department together with its job title and returns to the directory', async () => {
+  it('saves a new department together with its job title and shows the employee’s page', async () => {
     const { user, api } = openAt(editRoute, {
       ...detail,
       'PATCH /api/employees/7': reply(200, asha),
@@ -349,7 +380,7 @@ describe('edit employee form', () => {
     await user.selectOptions(screen.getByLabelText('Job title'), 'Account Executive');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    expect(await screen.findByRole('heading', { name: 'Employees' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Asha Rao' })).toBeInTheDocument();
     expect(api.callsTo('PATCH /api/employees/7')[0]?.body).toEqual({
       department: 'Sales',
       jobTitle: 'Account Executive',

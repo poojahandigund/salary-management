@@ -1,4 +1,4 @@
-﻿import type { UpdateEmployeeInput } from '@acme/shared';
+import type { UpdateEmployeeInput } from '@acme/shared';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { ApiError } from '@/api/client';
@@ -51,7 +51,7 @@ function EditForm({
   const onSubmit = async (changes: UpdateEmployeeInput) => {
     const saved = await update.mutateAsync(changes);
     toast.success(`${saved.firstName} ${saved.lastName} was updated.`);
-    void navigate('/employees');
+    void navigate(`/employees/${id}`);
   };
 
   return (
@@ -60,7 +60,12 @@ function EditForm({
         Edit {initial.firstName} {initial.lastName}
       </h1>
       <div className="rounded-lg border bg-background p-6">
-        <EmployeeForm mode="edit" initial={initial} onSubmit={onSubmit} cancelTo="/employees" />
+        <EmployeeForm
+          mode="edit"
+          initial={initial}
+          onSubmit={onSubmit}
+          cancelTo={`/employees/${id}`}
+        />
       </div>
     </div>
   );
