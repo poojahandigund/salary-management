@@ -65,6 +65,6 @@ All tests use **Vitest**, so frontend and backend share one runner, one syntax a
 
 ## Deferred
 
-- **Docker Compose:** a one-command local Postgres, added once the core features are built. Until then, PostgreSQL runs directly on the developer machine.
-- **Deployment:** decided after the core features are built.
+- **Docker Compose:** a one-command local Postgres. Not added: Docker was not available to test it. PostgreSQL runs directly on the developer machine, as the README describes.
+- **Deployment:** on hold. The app is ready to run as one service (the API serves the built web app when `WEB_DIST_DIR` is set); hosting is not chosen yet.
 - **CI (GitHub Actions):** can be added later to run lint and tests on every push.
