@@ -34,7 +34,7 @@ describe('parseListParams', () => {
   });
 
   it('ignores only the settings that are invalid and keeps the rest', () => {
-    const query = parse('country=ZZ&level=99&page=abc&sort=salary&q=asha&order=desc');
+    const query = parse('country=ZZ&level=99&page=abc&sort=shoeSize&q=asha&order=desc');
 
     expect(query).toMatchObject({ q: 'asha', order: 'desc', page: 1, sort: 'name' });
     expect(query.country).toBeUndefined();

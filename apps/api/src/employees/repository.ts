@@ -14,6 +14,7 @@ import {
 import type { Pool } from 'pg';
 import { inTransaction } from '../db/transaction';
 import { AppError } from '../lib/errors';
+import { CURRENT_SALARY_COLUMNS, CURRENT_SALARY_JOINS } from '../salary/sql';
 
 /** The only thing the repository needs from the database: run a parameterised query. */
 export type Db = Pick<Pool, 'query'>;
@@ -26,6 +27,15 @@ export type Db = Pick<Pool, 'query'>;
 export const EMPLOYEE_COLUMNS = `
   id, first_name, last_name, email, country_code, department, job_title, level,
   hire_date::text AS hire_date, status, created_at, updated_at`;
+
+/**
+ * Every employee read goes through this one SELECT, so an employee always carries their
+ * current salary, whichever endpoint returns them. Writes return only the id and read the
+ * employee back with this, because a RETURNING clause cannot join the salary tables.
+ */
+const SELECT_EMPLOYEES = `
+  SELECT ${EMPLOYEE_COLUMNS}, ${CURRENT_SALARY_COLUMNS}
+  FROM employees e ${CURRENT_SALARY_JOINS}`;
 
 export interface EmployeeRow {
   // BIGINT columns arrive from pg as strings.
@@ -41,6 +51,11 @@ export interface EmployeeRow {
   status: string;
   created_at: Date;
   updated_at: Date;
+  // Current salary: all null when the employee has no salary record.
+  current_amount_minor: string | null;
+  current_currency: string | null;
+  current_effective_date: string | null;
+  current_amount_usd_minor: string | null;
 }
 
 /** Converts a database row to the JSON shape described by the shared `employeeSchema`. */
@@ -56,6 +71,18 @@ export function toEmployee(row: EmployeeRow): Employee {
     level: row.level,
     hireDate: row.hire_date,
     status: row.status as Employee['status'],
+    currentSalary:
+      row.current_amount_minor === null ||
+      row.current_currency === null ||
+      row.current_effective_date === null ||
+      row.current_amount_usd_minor === null
+        ? null
+        : {
+            amountMinor: Number(row.current_amount_minor),
+            currency: row.current_currency as NonNullable<Employee['currentSalary']>['currency'],
+            amountUsdMinor: Number(row.current_amount_usd_minor),
+            effectiveDate: row.current_effective_date,
+          },
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -71,6 +98,8 @@ const SORT_SQL: Record<EmployeeSortField, (direction: 'ASC' | 'DESC') => string>
   jobTitle: (d) => `job_title ${d}`,
   level: (d) => `level ${d}`,
   hireDate: (d) => `hire_date ${d}`,
+  // Compared in US dollars; an employee without a salary record goes last either way.
+  salary: (d) => `current_amount_usd_minor ${d} NULLS LAST`,
 };
 
 const DIRECTION_SQL: Record<SortDirection, 'ASC' | 'DESC'> = { asc: 'ASC', desc: 'DESC' };
@@ -139,7 +168,7 @@ export async function listEmployees(
 
   const [rows, count] = await Promise.all([
     db.query<EmployeeRow>(
-      `SELECT ${EMPLOYEE_COLUMNS} FROM employees ${where.sql} ORDER BY ${orderBy} LIMIT ${limit} OFFSET ${offset}`,
+      `${SELECT_EMPLOYEES} ${where.sql} ORDER BY ${orderBy} LIMIT ${limit} OFFSET ${offset}`,
       [...where.params, query.pageSize, (query.page - 1) * query.pageSize],
     ),
     db.query<{ total: string }>(
@@ -156,12 +185,19 @@ export async function listEmployees(
 
 /** Returns the employee, or undefined when there is no employee with that id. */
 export async function findEmployee(db: Db, id: number): Promise<Employee | undefined> {
-  const result = await db.query<EmployeeRow>(
-    `SELECT ${EMPLOYEE_COLUMNS} FROM employees WHERE id = $1`,
-    [id],
-  );
+  const result = await db.query<EmployeeRow>(`${SELECT_EMPLOYEES} WHERE e.id = $1`, [id]);
   const row = result.rows[0];
   return row === undefined ? undefined : toEmployee(row);
+}
+
+/** Reads back an employee that was just written, on the same connection (so inside its transaction). */
+async function readBack(db: Db, id: number): Promise<Employee> {
+  const employee = await findEmployee(db, id);
+  if (employee === undefined) {
+    // Cannot happen: the row was written moments ago on this same connection.
+    throw new Error(`Employee ${id} disappeared right after being saved`);
+  }
+  return employee;
 }
 
 const EMAIL_TAKEN = () =>
@@ -184,11 +220,11 @@ function isDuplicateEmail(error: unknown): boolean {
 export async function createEmployee(pool: Pool, input: CreateEmployeeInput): Promise<Employee> {
   try {
     return await inTransaction(pool, async (client) => {
-      const inserted = await client.query<EmployeeRow>(
+      const inserted = await client.query<{ id: string }>(
         `INSERT INTO employees
            (first_name, last_name, email, country_code, department, job_title, level, hire_date)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         RETURNING ${EMPLOYEE_COLUMNS}`,
+         RETURNING id`,
         [
           input.firstName,
           input.lastName,
@@ -200,15 +236,15 @@ export async function createEmployee(pool: Pool, input: CreateEmployeeInput): Pr
           input.hireDate,
         ],
       );
-      const row = inserted.rows[0] as EmployeeRow;
+      const id = Number((inserted.rows[0] as { id: string }).id);
 
       await client.query(
         `INSERT INTO salary_records (employee_id, amount_minor, currency, effective_date, reason)
          VALUES ($1, $2, $3, $4, 'hire')`,
-        [row.id, input.startingSalaryMinor, currencyForCountry(input.countryCode), input.hireDate],
+        [id, input.startingSalaryMinor, currencyForCountry(input.countryCode), input.hireDate],
       );
 
-      return toEmployee(row);
+      return readBack(client, id);
     });
   } catch (error) {
     if (isDuplicateEmail(error)) throw EMAIL_TAKEN();
@@ -284,13 +320,11 @@ export async function updateEmployee(
       const assignments = entries.map(
         ([field], index) => `${UPDATE_COLUMNS[field]} = $${index + 2}`,
       );
-      const updated = await client.query<EmployeeRow>(
-        `UPDATE employees SET ${assignments.join(', ')}, updated_at = now()
-         WHERE id = $1
-         RETURNING ${EMPLOYEE_COLUMNS}`,
+      await client.query(
+        `UPDATE employees SET ${assignments.join(', ')}, updated_at = now() WHERE id = $1`,
         [id, ...entries.map(([, value]) => value)],
       );
-      return toEmployee(updated.rows[0] as EmployeeRow);
+      return readBack(client, id);
     });
   } catch (error) {
     if (isDuplicateEmail(error)) throw EMAIL_TAKEN();
@@ -308,14 +342,13 @@ export async function setEmployeeStatus(
   id: number,
   status: EmployeeStatus,
 ): Promise<Employee | undefined> {
-  const result = await db.query<EmployeeRow>(
+  const result = await db.query(
     `UPDATE employees
      SET status = $2,
          updated_at = CASE WHEN status <> $2 THEN now() ELSE updated_at END
-     WHERE id = $1
-     RETURNING ${EMPLOYEE_COLUMNS}`,
+     WHERE id = $1`,
     [id, status],
   );
-  const row = result.rows[0];
-  return row === undefined ? undefined : toEmployee(row);
+  if (result.rowCount === 0) return undefined;
+  return findEmployee(db, id);
 }

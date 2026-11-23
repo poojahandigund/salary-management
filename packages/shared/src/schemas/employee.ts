@@ -7,7 +7,7 @@ import {
 } from '../reference-data/departments';
 import { EMPLOYEE_STATUSES } from '../reference-data/enums';
 import { MAX_LEVEL, MIN_LEVEL } from '../reference-data/levels';
-import { amountMinorSchema } from './salary';
+import { amountMinorSchema, currentSalarySchema } from './salary';
 
 /**
  * Zod schemas for employees, shared by the API (to validate requests) and the web app
@@ -104,6 +104,8 @@ export const employeeSchema = z.object({
   id: z.number().int().positive(),
   ...employeeFields,
   status: z.enum(EMPLOYEE_STATUSES),
+  /** Null only for an employee with no salary record, which the API never creates. */
+  currentSalary: currentSalarySchema.nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

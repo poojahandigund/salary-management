@@ -26,6 +26,8 @@ export const EMPLOYEE_SORT_FIELDS = [
   'jobTitle',
   'level',
   'hireDate',
+  // By the US-dollar equivalent, since amounts in different currencies cannot be compared.
+  'salary',
 ] as const;
 export type EmployeeSortField = (typeof EMPLOYEE_SORT_FIELDS)[number];
 

@@ -53,6 +53,19 @@ export const salaryRecordSchema = z.object({
 });
 export type SalaryRecord = z.infer<typeof salaryRecordSchema>;
 
+/**
+ * An employee's salary right now (their latest record), as shown next to the employee.
+ * The amount is in the currency of the employee's country; `amountUsdMinor` is the same
+ * amount in US cents, for comparing people across countries.
+ */
+export const currentSalarySchema = salaryRecordSchema.pick({
+  amountMinor: true,
+  currency: true,
+  amountUsdMinor: true,
+  effectiveDate: true,
+});
+export type CurrentSalary = z.infer<typeof currentSalarySchema>;
+
 /** An employee's salary history, newest change first. */
 export const salaryHistorySchema = z.object({ items: z.array(salaryRecordSchema) });
 export type SalaryHistory = z.infer<typeof salaryHistorySchema>;

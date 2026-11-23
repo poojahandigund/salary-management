@@ -1,4 +1,4 @@
-﻿import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -179,7 +179,7 @@ describe('employee directory', () => {
     });
 
     it('ignores invalid values in the address instead of failing', async () => {
-      const { api } = await openDirectory('/employees?level=99&page=abc&sort=salary&country=IN');
+      const { api } = await openDirectory('/employees?level=99&page=abc&sort=shoeSize&country=IN');
       await screen.findByRole('link', { name: 'Asha Rao' });
 
       expect(lastListUrl(api)).toBe('/api/employees?country=IN');

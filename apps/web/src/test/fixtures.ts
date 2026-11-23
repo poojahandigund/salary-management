@@ -16,6 +16,12 @@ export function makeEmployee(overrides: Partial<Employee> = {}): Employee {
     level: 3,
     hireDate: '2022-04-01',
     status: 'active',
+    currentSalary: {
+      amountMinor: 150_000_000,
+      currency: 'INR',
+      amountUsdMinor: 1_800_000,
+      effectiveDate: '2022-04-01',
+    },
     createdAt: '2022-04-01T09:00:00.000Z',
     updatedAt: '2022-04-01T09:00:00.000Z',
     ...overrides,
