@@ -69,8 +69,8 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 - [x] `test: fill coverage gaps, frontend component tests`
 - [x] `docs: README with setup, seed and run steps; architecture diagram and trade-offs`
 - [x] `feat(api): serve the built web app from the API service (one site for web and API)`
-- [ ] `chore: add docker-compose for one-command local Postgres (deferred from Phase 0)`
-- [ ] `chore: deployment`, then the demo video
+- [x] ~~`chore: add docker-compose for one-command local Postgres (deferred from Phase 0)`~~ Skipped: Docker is not installed on the development machine, so it could not be tested, and the README explains the local Postgres setup.
+- [ ] `chore: deployment`, then the demo video. On hold by decision: the app already runs as one service (see `WEB_DIST_DIR`), so only hosting remains. Start the API with `node apps/api/dist/server.js` on a host, not `npm run start`, which reads a `.env` file that a host will not have.
 
 ## Decisions to settle before the relevant phase
 
