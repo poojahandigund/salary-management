@@ -44,17 +44,21 @@ describe('migrations', () => {
   });
 
   it('rolls back only the most recent migration by default', async () => {
+    // An index has a name in the same namespace as tables, so the same lookup finds it.
+    expect(await tableExists('employees_name_idx')).toBe(true);
+
     await runMigrations({ databaseUrl, direction: 'down', logger });
 
-    expect(await tableExists('salary_records')).toBe(false);
+    expect(await tableExists('employees_name_idx')).toBe(false);
     expect(await tableExists('employees')).toBe(true);
     expect(await tableExists('exchange_rates')).toBe(true);
+    expect(await tableExists('salary_records')).toBe(true);
   });
 
   it('removes the append-only trigger function when rolling back', async () => {
     expect(await functionExists('salary_records_block_changes')).toBe(true);
 
-    await runMigrations({ databaseUrl, direction: 'down', logger });
+    await runMigrations({ databaseUrl, direction: 'down', logger, count: Infinity });
 
     expect(await functionExists('salary_records_block_changes')).toBe(false);
   });

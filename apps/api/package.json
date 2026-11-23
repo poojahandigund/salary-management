@@ -11,6 +11,7 @@
     "migrate:up": "tsx --env-file=../../.env scripts/migrate.ts up",
     "migrate:down": "tsx --env-file=../../.env scripts/migrate.ts down",
     "seed": "tsx --env-file=../../.env scripts/seed.ts",
+    "perf": "tsx --env-file=../../.env scripts/perf.ts",
     "hash-password": "tsx scripts/hash-password.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
