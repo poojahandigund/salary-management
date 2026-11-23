@@ -1,7 +1,11 @@
 import {
   type InsightsSummary,
+  type Outliers,
+  type SalaryDistribution,
   type SalaryStats,
   insightsSummarySchema,
+  outliersSchema,
+  salaryDistributionSchema,
   salaryStatsSchema,
 } from '@acme/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -43,6 +47,34 @@ export function useSalaryStats(view: InsightParams) {
         signal,
       }),
     // While other figures load, the old ones stay on screen (dimmed) instead of flashing empty.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** How current salaries are spread, for the people matching the filters. */
+export function useSalaryDistribution(view: InsightParams) {
+  const params = toFilterParams(view);
+  return useQuery({
+    queryKey: [...INSIGHTS_QUERY_KEY, 'salary-distribution', params.toString()],
+    queryFn: ({ signal }): Promise<SalaryDistribution> =>
+      apiRequest(withQuery('/api/insights/salary-distribution', params), {
+        schema: salaryDistributionSchema,
+        signal,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** People paid unusually far from their peers, among those matching the filters. */
+export function useOutliers(view: InsightParams) {
+  const params = toFilterParams(view);
+  return useQuery({
+    queryKey: [...INSIGHTS_QUERY_KEY, 'outliers', params.toString()],
+    queryFn: ({ signal }): Promise<Outliers> =>
+      apiRequest(withQuery('/api/insights/outliers', params), {
+        schema: outliersSchema,
+        signal,
+      }),
     placeholderData: keepPreviousData,
   });
 }

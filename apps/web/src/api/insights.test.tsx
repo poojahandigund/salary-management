@@ -2,11 +2,17 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { makeStats, makeSummary } from '@/test/fixtures';
+import { makeDistribution, makeOutliers, makeStats, makeSummary } from '@/test/fixtures';
 import { apiError, mockApi, reply } from '@/test/mock-api';
 import { createTestQueryClient } from '@/test/render';
 import { EMPLOYEES_QUERY_KEY } from './employees';
-import { INSIGHTS_QUERY_KEY, useInsightsSummary, useSalaryStats } from './insights';
+import {
+  INSIGHTS_QUERY_KEY,
+  useInsightsSummary,
+  useOutliers,
+  useSalaryDistribution,
+  useSalaryStats,
+} from './insights';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -130,6 +136,82 @@ describe('useSalaryStats', () => {
       'groupBy=country',
     ]);
     expect(state?.isInvalidated).toBe(true);
+  });
+});
+
+describe.each([
+  [
+    'useSalaryDistribution',
+    useSalaryDistribution,
+    '/api/insights/salary-distribution',
+    'salary-distribution',
+    makeDistribution(),
+  ],
+  ['useOutliers', useOutliers, '/api/insights/outliers', 'outliers', makeOutliers()],
+] as const)('%s', (_name, useHook, path, keyPart, body) => {
+  it('asks with the filters only, never the grouping', async () => {
+    const api = mockApi({ [`GET ${path}`]: reply(200, body) });
+    const { wrapper } = setup();
+
+    const { result } = renderHook(
+      () => useHook({ groupBy: 'level', country: 'IN', jobTitle: 'Accountant', level: 2 }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const params = new URL(api.calls[0]?.url ?? '', 'http://x').searchParams;
+    expect(Object.fromEntries(params)).toEqual({
+      country: 'IN',
+      jobTitle: 'Accountant',
+      level: '2',
+    });
+  });
+
+  it('asks without a query string when there are no filters', async () => {
+    const api = mockApi({ [`GET ${path}`]: reply(200, body) });
+    const { wrapper } = setup();
+
+    const { result } = renderHook(() => useHook({ groupBy: 'department' }), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.calls[0]?.url).toBe(path);
+  });
+
+  it('shares one cached answer between groupings, since the grouping does not change it', async () => {
+    const api = mockApi({ [`GET ${path}`]: reply(200, body) });
+    const { wrapper } = setup();
+    const { result, rerender } = renderHook(({ groupBy }) => useHook({ groupBy }), {
+      wrapper,
+      initialProps: { groupBy: 'country' as 'country' | 'level' },
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    rerender({ groupBy: 'level' });
+
+    expect(result.current.isPlaceholderData).toBe(false);
+    expect(api.calls).toHaveLength(1);
+  });
+
+  it('is refreshed when employees or salaries change', async () => {
+    mockApi({ [`GET ${path}`]: reply(200, body) });
+    const { queryClient, wrapper } = setup();
+    const { result } = renderHook(() => useHook({ groupBy: 'country' }), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    await queryClient.invalidateQueries({ queryKey: EMPLOYEES_QUERY_KEY, refetchType: 'none' });
+
+    expect(queryClient.getQueryState([...INSIGHTS_QUERY_KEY, keyPart, ''])?.isInvalidated).toBe(
+      true,
+    );
+  });
+
+  it('fails when the answer is not what was promised', async () => {
+    mockApi({ [`GET ${path}`]: reply(200, { nonsense: true }) });
+    const { wrapper } = setup();
+
+    const { result } = renderHook(() => useHook({ groupBy: 'country' }), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

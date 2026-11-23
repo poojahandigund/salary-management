@@ -63,7 +63,7 @@ export function SalaryStatsTable({ stats, groupBy: chosen, onGroupBy }: SalarySt
         </p>
       ) : (
         <div className="rounded-lg border bg-background">
-          <Table>
+          <Table aria-label="Salary statistics">
             <TableHeader>
               <TableRow>
                 <TableHead>{GROUPING_LABELS[groupBy]}</TableHead>

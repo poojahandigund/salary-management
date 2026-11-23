@@ -2,6 +2,9 @@ import type {
   Employee,
   EmployeePage,
   InsightsSummary,
+  Outlier,
+  Outliers,
+  SalaryDistribution,
   SalaryRecord,
   SalaryStats,
 } from '@acme/shared';
@@ -112,4 +115,46 @@ export function makeStats(overrides: Partial<SalaryStats> = {}): SalaryStats {
     ],
     ...overrides,
   };
+}
+
+/** Four people spread over USD 50,000-wide buckets, with an empty bucket between. */
+export function makeDistribution(overrides: Partial<SalaryDistribution> = {}): SalaryDistribution {
+  return {
+    currency: 'USD',
+    headcount: 4,
+    bucketWidthUsdMinor: 5_000_000,
+    buckets: [
+      { fromUsdMinor: 5_000_000, toUsdMinor: 10_000_000, count: 1 },
+      { fromUsdMinor: 10_000_000, toUsdMinor: 15_000_000, count: 2 },
+      { fromUsdMinor: 15_000_000, toUsdMinor: 20_000_000, count: 0 },
+      { fromUsdMinor: 20_000_000, toUsdMinor: 25_000_000, count: 1 },
+    ],
+    ...overrides,
+  };
+}
+
+/** Someone paid 150% above the median of six peers. */
+export function makeOutlier(overrides: Partial<Outlier> = {}): Outlier {
+  return {
+    employee: {
+      id: 7,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      countryCode: 'GB',
+      department: 'Engineering',
+      jobTitle: 'Software Engineer',
+      level: 4,
+    },
+    salaryUsdMinor: 25_000_000,
+    peerCount: 6,
+    peerMedianUsdMinor: 10_000_000,
+    percentFromMedian: 150,
+    score: 40.5,
+    direction: 'above',
+    ...overrides,
+  };
+}
+
+export function makeOutliers(items: Outlier[] = [makeOutlier()], total = items.length): Outliers {
+  return { currency: 'USD', total, items };
 }

@@ -1,8 +1,15 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
-import { useInsightsSummary, useSalaryStats } from '@/api/insights';
+import {
+  useInsightsSummary,
+  useOutliers,
+  useSalaryDistribution,
+  useSalaryStats,
+} from '@/api/insights';
 import { InsightFilters } from '@/components/insights/InsightFilters';
+import { OutliersTable } from '@/components/insights/OutliersTable';
 import { PayrollBreakdown } from '@/components/insights/PayrollBreakdown';
+import { SalaryHistogram } from '@/components/insights/SalaryHistogram';
 import { SalaryStatsTable } from '@/components/insights/SalaryStatsTable';
 import { SectionError } from '@/components/insights/SectionError';
 import { SummaryCards } from '@/components/insights/SummaryCards';
@@ -23,6 +30,8 @@ export function InsightsPage() {
 
   const summary = useInsightsSummary();
   const stats = useSalaryStats(view);
+  const distribution = useSalaryDistribution(view);
+  const outliers = useOutliers(view);
 
   const show = (next: InsightParams) => setParams(toInsightParams(next));
   const change = (patch: Partial<InsightParams>) => show({ ...view, ...patch });
@@ -92,6 +101,46 @@ export function InsightsPage() {
               groupBy={view.groupBy}
               onGroupBy={(groupBy) => change({ groupBy })}
             />
+          </div>
+        )}
+
+        <h3 className="pt-2 text-base font-semibold">Salary distribution</h3>
+        {distribution.isError && !distribution.data ? (
+          <SectionError
+            what="the salary distribution"
+            message={distribution.error.message}
+            onRetry={() => void distribution.refetch()}
+          />
+        ) : distribution.data === undefined ? (
+          <Skeleton
+            className="h-56"
+            aria-busy="true"
+            aria-label="Loading the salary distribution"
+          />
+        ) : (
+          <div className={cn(distribution.isPlaceholderData && 'opacity-60 transition-opacity')}>
+            <SalaryHistogram distribution={distribution.data} />
+          </div>
+        )}
+
+        <h3 className="pt-2 text-base font-semibold">Pay outliers</h3>
+        <p className="text-sm text-muted-foreground">
+          Each person is compared with active employees who have the same job title, level and
+          country (at least 5 of them). Someone is listed when their salary is far from the peer
+          median, judged against how much pay normally varies in that group. It is a reason to take
+          a look, not a verdict: there may be a good explanation.
+        </p>
+        {outliers.isError && !outliers.data ? (
+          <SectionError
+            what="the outliers"
+            message={outliers.error.message}
+            onRetry={() => void outliers.refetch()}
+          />
+        ) : outliers.data === undefined ? (
+          <Skeleton className="h-40" aria-busy="true" aria-label="Loading the outliers" />
+        ) : (
+          <div className={cn(outliers.isPlaceholderData && 'opacity-60 transition-opacity')}>
+            <OutliersTable outliers={outliers.data} />
           </div>
         )}
       </section>
