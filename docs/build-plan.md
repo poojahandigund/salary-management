@@ -32,7 +32,7 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 
 ## Phase 3: Authentication
 
-- [ ] `feat(api): password hashing and JWT sign/verify helpers`
+- [x] `feat(api): password hashing and JWT sign/verify helpers`
 - [ ] `feat(api): login/logout routes and requireAuth middleware`
 - [ ] `test(api): auth API tests`
 
@@ -77,6 +77,7 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 - **Outlier definition (before the outlier commit):** compare each employee to peers with the same job title, level and country, using median and median absolute deviation (MAD) rather than the average, so extreme salaries do not distort the baseline. Peer groups smaller than about 5 are skipped.
 - **Reference data (before the reference-data commit):** around 7 countries, 6 to 8 departments and matching job titles. These live as constants in the shared package (country code, name and currency), not as database tables. Both the API and the UI import them, and Zod validates against them. Departments are plain text. Exchange rates stay in a table because they are data that can change.
 - **How the API consumes `@acme/shared` (before any production code imports it, in Phase 4):** the shared package currently ships as TypeScript source with no build step. Tested: this works for `tsx`, Vitest, type-checking and `tsc` builds, but compiled output fails under plain `node` (`require('@acme/shared')` reaches `.ts` source that Node cannot run). Options: (1) bundle the API with esbuild so shared is compiled in, which keeps development friction-free but means fixing how the migrations folder is located; (2) compile shared to CommonJS `dist/` and rebuild it after edits; (3) run the API with `tsx` in production. Leaning towards (1). The Vite web app can import the source directly.
+- **Deployment shape (decided in Phase 3, built in Phase 4 and Phase 7):** the session cookie is `SameSite=Strict`, which requires the web app and the API to be the same site. In development, add a Vite proxy that forwards `/api` to the API (with the web scaffold in Phase 4). In production, one service serves both the built web app and the API (Phase 7). This pairs naturally with bundling the API with esbuild, the leading option in the "How the API consumes `@acme/shared`" decision above.
 - **Deployment (last phase):** hosting choice affects the database pool configuration.
 
 ## Why this order
