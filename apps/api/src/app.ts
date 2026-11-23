@@ -2,6 +2,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
+import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import type { AuthConfig } from './auth/config';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -9,11 +10,14 @@ import { DEFAULT_LOGIN_RATE_LIMIT, type LoginRateLimitOptions } from './middlewa
 import { createRequestLogger } from './middleware/requestLogger';
 import { createRequireAuth } from './middleware/requireAuth';
 import { createPublicAuthRouter, createSessionRouter } from './routes/auth';
+import { createEmployeesRouter } from './routes/employees';
 
 export interface AppOptions {
   /** The one browser origin (the web app) that is allowed to call this API. */
   corsOrigin: string;
   logger: Logger;
+  /** The database connection pool. */
+  pool: Pool;
   /** The HR manager account and how logins are signed. */
   auth: AuthConfig;
   /** Send the session cookie over HTTPS only. True in production. Defaults to false (local http). */
@@ -34,6 +38,7 @@ export interface AppOptions {
 export function createApp({
   corsOrigin,
   logger,
+  pool,
   auth,
   cookieSecure = false,
   loginRateLimit = DEFAULT_LOGIN_RATE_LIMIT,
@@ -79,6 +84,7 @@ export function createApp({
   app.use('/api', createRequireAuth({ jwtSecret: auth.jwtSecret, username: auth.username }));
 
   app.use('/api/auth', createSessionRouter());
+  app.use('/api/employees', createEmployeesRouter({ pool }));
 
   // Keep these last: unmatched routes become a JSON 404, and all errors end up in one handler.
   app.use(notFoundHandler);

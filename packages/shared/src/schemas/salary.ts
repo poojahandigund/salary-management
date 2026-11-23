@@ -14,7 +14,7 @@ export const MAX_AMOUNT_MINOR = 100_000_000_000;
  * database, so there is no floating-point rounding anywhere. The UI converts to and from
  * the amount people type.
  */
-const amountMinor = z
+export const amountMinorSchema = z
   .number('Amount must be a number')
   .int('Amount must be a whole number of minor units (cents, paise)')
   .positive('Amount must be greater than zero')
@@ -29,7 +29,7 @@ const amountMinor = z
  * date is checked by the endpoint, which has the employee.
  */
 export const salaryChangeInputSchema = z.strictObject({
-  amountMinor,
+  amountMinor: amountMinorSchema,
   effectiveDate: z.iso.date('Enter a valid date (YYYY-MM-DD)'),
   reason: z.enum(SALARY_REASONS).exclude(['hire'], 'Choose a reason for the change'),
 });
@@ -39,7 +39,7 @@ export type SalaryChangeInput = z.infer<typeof salaryChangeInputSchema>;
 export const salaryRecordSchema = z.object({
   id: z.number().int().positive(),
   employeeId: z.number().int().positive(),
-  amountMinor,
+  amountMinor: amountMinorSchema,
   currency: z.enum(CURRENCY_CODES),
   effectiveDate: z.iso.date(),
   reason: z.enum(SALARY_REASONS),

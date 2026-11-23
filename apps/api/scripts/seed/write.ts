@@ -1,5 +1,6 @@
 import { EXCHANGE_RATES_TO_USD } from '@acme/shared';
 import type { Pool, PoolClient } from 'pg';
+import { syncExchangeRates } from '../../src/db/exchange-rates';
 import type { SeedDataset } from './generate';
 
 /** Thrown for a problem the person running the seed can fix (as opposed to a bug). */
@@ -69,13 +70,7 @@ export async function writeDataset(
   }
 
   // Exchange rates come from the shared constants, so they are always in step with the code.
-  const rates = Object.entries(EXCHANGE_RATES_TO_USD);
-  await db.query(
-    `INSERT INTO exchange_rates (currency, rate_to_usd)
-     SELECT * FROM unnest($1::text[], $2::numeric[])
-     ON CONFLICT (currency) DO UPDATE SET rate_to_usd = EXCLUDED.rate_to_usd`,
-    [rates.map(([currency]) => currency), rates.map(([, rate]) => rate)],
-  );
+  await syncExchangeRates(db);
 
   const employeeBatchSize = options.employeeBatchSize ?? EMPLOYEE_BATCH_SIZE;
   const salaryBatchSize = options.salaryBatchSize ?? SALARY_BATCH_SIZE;
@@ -128,7 +123,7 @@ export async function writeDataset(
   return {
     employees: dataset.employees.length,
     salaryRecords: dataset.salaryRecords.length,
-    exchangeRates: rates.length,
+    exchangeRates: Object.keys(EXCHANGE_RATES_TO_USD).length,
   };
 }
 

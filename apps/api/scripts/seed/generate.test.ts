@@ -93,9 +93,16 @@ describe('generateDataset: size and ids', () => {
 
 describe('generateDataset: employees', () => {
   it('only creates employees the shared create-employee schema accepts', () => {
+    // Creating an employee also takes a starting salary: use each employee's hire record.
+    const hireSalary = new Map(
+      full.salaryRecords
+        .filter((record) => record.reason === 'hire')
+        .map((record) => [record.employeeId, record.amountMinor]),
+    );
     const rejected = full.employees.filter(
       (employee) =>
         !createEmployeeInputSchema.safeParse({
+          startingSalaryMinor: hireSalary.get(employee.id),
           firstName: employee.firstName,
           lastName: employee.lastName,
           email: employee.email,

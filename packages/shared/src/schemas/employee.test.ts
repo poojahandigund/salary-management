@@ -13,6 +13,9 @@ const validInput = {
   hireDate: '2022-04-01',
 };
 
+/** What creating an employee takes: the person's fields plus a starting salary. */
+const createInput = { ...validInput, startingSalaryMinor: 12_000_000 };
+
 /** Returns the message for each problem, keyed by the field it belongs to. */
 function problems(result: { success: boolean; error?: { issues: readonly Issue[] } }) {
   return Object.fromEntries(
@@ -30,12 +33,12 @@ describe('isJobTitleInDepartment', () => {
 
 describe('createEmployeeInputSchema', () => {
   it('accepts a valid employee', () => {
-    expect(createEmployeeInputSchema.parse(validInput)).toEqual(validInput);
+    expect(createEmployeeInputSchema.parse(createInput)).toEqual(createInput);
   });
 
   it('trims names and email', () => {
     const parsed = createEmployeeInputSchema.parse({
-      ...validInput,
+      ...createInput,
       firstName: '  Asha ',
       email: ' asha.rao@acme.example ',
     });
@@ -46,10 +49,10 @@ describe('createEmployeeInputSchema', () => {
   it('accepts the lowest and highest level and the longest name', () => {
     const longName = 'x'.repeat(100);
     for (const level of [1, 10]) {
-      expect(createEmployeeInputSchema.safeParse({ ...validInput, level }).success).toBe(true);
+      expect(createEmployeeInputSchema.safeParse({ ...createInput, level }).success).toBe(true);
     }
     expect(
-      createEmployeeInputSchema.safeParse({ ...validInput, firstName: longName }).success,
+      createEmployeeInputSchema.safeParse({ ...createInput, firstName: longName }).success,
     ).toBe(true);
   });
 
@@ -72,25 +75,44 @@ describe('createEmployeeInputSchema', () => {
     ['a date in the wrong format', { hireDate: '01/04/2022' }, 'hireDate'],
     ['a date without zero padding', { hireDate: '2022-4-1' }, 'hireDate'],
   ])('rejects %s', (_label, change, field) => {
-    const result = createEmployeeInputSchema.safeParse({ ...validInput, ...change });
+    const result = createEmployeeInputSchema.safeParse({ ...createInput, ...change });
     expect(result.success).toBe(false);
     expect(Object.keys(problems(result))).toContain(field);
   });
 
   it('rejects a job title from another department, and blames the job title', () => {
-    const result = createEmployeeInputSchema.safeParse({ ...validInput, jobTitle: 'Accountant' });
+    const result = createEmployeeInputSchema.safeParse({ ...createInput, jobTitle: 'Accountant' });
     expect(problems(result)).toEqual({
       jobTitle: 'This job title does not belong to the chosen department',
     });
   });
 
   it.each(['status', 'id', 'createdAt', 'isAdmin'])('rejects the unknown field "%s"', (field) => {
-    const result = createEmployeeInputSchema.safeParse({ ...validInput, [field]: 'inactive' });
+    const result = createEmployeeInputSchema.safeParse({ ...createInput, [field]: 'inactive' });
     expect(result.success).toBe(false);
   });
 
+  it.each([
+    ['a missing starting salary', { startingSalaryMinor: undefined }],
+    ['a zero salary', { startingSalaryMinor: 0 }],
+    ['a negative salary', { startingSalaryMinor: -5 }],
+    ['a fractional salary', { startingSalaryMinor: 100.5 }],
+    ['a salary sent as text', { startingSalaryMinor: '1000' }],
+    ['an absurdly large salary', { startingSalaryMinor: 1e15 }],
+  ])('rejects %s', (_label, change) => {
+    const result = createEmployeeInputSchema.safeParse({ ...createInput, ...change });
+    expect(result.success).toBe(false);
+    expect(Object.keys(problems(result))).toContain('startingSalaryMinor');
+  });
+
+  it("does not take a currency: it comes from the employee's country", () => {
+    expect(createEmployeeInputSchema.safeParse({ ...createInput, currency: 'USD' }).success).toBe(
+      false,
+    );
+  });
+
   it('gives a readable message a form can show', () => {
-    const result = createEmployeeInputSchema.safeParse({ ...validInput, level: 11 });
+    const result = createEmployeeInputSchema.safeParse({ ...createInput, level: 11 });
     expect(problems(result)).toEqual({ level: 'Level must be between 1 and 10' });
   });
 });
