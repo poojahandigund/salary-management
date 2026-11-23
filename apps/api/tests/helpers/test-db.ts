@@ -36,6 +36,8 @@ export async function resetDatabase(pool: Pool): Promise<void> {
 export interface TestDatabase {
   /** One dedicated connection for the test file. Run queries with `db.query(...)`. */
   db: PoolClient;
+  /** The pool behind db. Give it to createTestApp({ pool }) to test routes against this database. */
+  pool: Pool;
   databaseUrl: string;
   /** Releases the connection and closes the pool. Call it in afterAll. */
   close: () => Promise<void>;
@@ -61,6 +63,7 @@ export async function setUpTestDatabase(): Promise<TestDatabase> {
   const db = await pool.connect();
   return {
     db,
+    pool,
     databaseUrl,
     close: async () => {
       db.release();

@@ -18,13 +18,13 @@ function loadEnvOrExit(): Env {
 const env = loadEnvOrExit();
 const logger = createLogger(env.LOG_LEVEL);
 
-// The pool is created now and closed on shutdown. Routes start using it with the
-// employees endpoints, once the schema exists.
+// The pool is shared by all requests and closed on shutdown.
 const pool = createPool(env.DATABASE_URL, logger);
 
 const app = createApp({
   corsOrigin: env.CORS_ORIGIN,
   logger,
+  pool,
   auth: authConfigFrom(env),
   // The session cookie is HTTPS-only in production; local development runs over plain http.
   cookieSecure: env.NODE_ENV === 'production',
