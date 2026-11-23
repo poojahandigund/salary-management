@@ -72,6 +72,31 @@ describe('employee directory', () => {
       expect(within(row).getByText('Active')).toBeInTheDocument();
     });
 
+    it('shows the current salary in its currency, with the US-dollar equivalent', async () => {
+      await openDirectory();
+
+      const row = (await screen.findByRole('link', { name: 'Asha Rao' })).closest(
+        'tr',
+      ) as HTMLElement;
+      expect(within(row).getByText('₹1,500,000.00')).toBeInTheDocument();
+      expect(within(row).getByText('≈ $18,000.00')).toBeInTheDocument();
+    });
+
+    it('shows a dash for an employee with no salary record', async () => {
+      const noSalary = makeEmployee({
+        id: 5,
+        firstName: 'Nia',
+        lastName: 'Novak',
+        currentSalary: null,
+      });
+      await openDirectory('/employees', () => reply(200, makePage([noSalary])));
+
+      const row = (await screen.findByRole('link', { name: 'Nia Novak' })).closest(
+        'tr',
+      ) as HTMLElement;
+      expect(within(row).getByText('—')).toBeInTheDocument();
+    });
+
     it('marks inactive employees', async () => {
       await openDirectory();
 
@@ -341,6 +366,19 @@ describe('employee directory', () => {
       await user.click(screen.getByRole('button', { name: 'Hired' }));
 
       await waitFor(() => expect(lastListUrl(api)).toBe('/api/employees?sort=hireDate'));
+    });
+
+    it('can sort by salary, which the server compares in US dollars', async () => {
+      const { user, api } = await openDirectory();
+      await screen.findByRole('link', { name: 'Asha Rao' });
+
+      await user.click(screen.getByRole('button', { name: 'Salary' }));
+
+      await waitFor(() => expect(lastListUrl(api)).toBe('/api/employees?sort=salary'));
+      expect(screen.getByRole('columnheader', { name: /Salary/ })).toHaveAttribute(
+        'aria-sort',
+        'ascending',
+      );
     });
 
     it('does not offer sorting by status', async () => {
