@@ -166,6 +166,8 @@ describe('generateDataset: salary history', () => {
         !salaryRecordSchema.safeParse({
           ...record,
           id: 1,
+          // Computed by the database when read back, so not part of the seed data.
+          amountUsdMinor: 0,
           createdAt: '2026-01-01T00:00:00.000Z',
         }).success || record.amountMinor > MAX_AMOUNT_MINOR,
     );

@@ -41,8 +41,18 @@ export const salaryRecordSchema = z.object({
   employeeId: z.number().int().positive(),
   amountMinor: amountMinorSchema,
   currency: z.enum(CURRENCY_CODES),
+  /**
+   * The same amount in US cents, converted with the fixed exchange rates, so salaries paid
+   * in different currencies can be compared. 0 is possible for a tiny amount in a
+   * low-value currency, so unlike mountMinor it is not required to be positive.
+   */
+  amountUsdMinor: z.number().int().nonnegative(),
   effectiveDate: z.iso.date(),
   reason: z.enum(SALARY_REASONS),
   createdAt: z.iso.datetime(),
 });
 export type SalaryRecord = z.infer<typeof salaryRecordSchema>;
+
+/** An employee's salary history, newest change first. */
+export const salaryHistorySchema = z.object({ items: z.array(salaryRecordSchema) });
+export type SalaryHistory = z.infer<typeof salaryHistorySchema>;
