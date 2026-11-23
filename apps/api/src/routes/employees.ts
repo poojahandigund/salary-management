@@ -10,6 +10,7 @@ import {
   createEmployee,
   findEmployee,
   listEmployees,
+  setEmployeeStatus,
   updateEmployee,
 } from '../employees/repository';
 import { AppError } from '../lib/errors';
@@ -68,6 +69,24 @@ export function createEmployeesRouter({ pool }: { pool: Pool }): Router {
     req.log.info({ employeeId: id, fields: Object.keys(changes) }, 'Employee updated');
     res.json(employee);
   });
+
+  // Deactivating (and bringing back) are actions rather than field edits: no body, and
+  // nothing is deleted, so the salary history is kept.
+  for (const [action, status] of [
+    ['deactivate', 'inactive'],
+    ['reactivate', 'active'],
+  ] as const) {
+    router.post(`/:id/${action}`, async (req, res) => {
+      const id = parseEmployeeId(req.params.id);
+      const employee = await setEmployeeStatus(pool, id, status);
+      if (employee === undefined) {
+        throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee not found');
+      }
+
+      req.log.info({ employeeId: id, status }, `Employee ${action}d`);
+      res.json(employee);
+    });
+  }
 
   return router;
 }

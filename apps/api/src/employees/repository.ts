@@ -3,6 +3,7 @@ import {
   type DepartmentName,
   type Employee,
   type EmployeeSortField,
+  type EmployeeStatus,
   type JobTitle,
   type ListEmployeesQuery,
   type SortDirection,
@@ -322,4 +323,26 @@ export async function updateEmployee(
     if (isDuplicateEmail(error)) throw EMAIL_TAKEN();
     throw error;
   }
+}
+
+/**
+ * Marks an employee active or inactive and returns them, or undefined if there is no such
+ * employee. Employees are never deleted, so their salary history stays. Repeating the
+ * same action is allowed and changes nothing (updated_at only moves when the status does).
+ */
+export async function setEmployeeStatus(
+  db: Db,
+  id: number,
+  status: EmployeeStatus,
+): Promise<Employee | undefined> {
+  const result = await db.query<EmployeeRow>(
+    `UPDATE employees
+     SET status = $2,
+         updated_at = CASE WHEN status <> $2 THEN now() ELSE updated_at END
+     WHERE id = $1
+     RETURNING ${EMPLOYEE_COLUMNS}`,
+    [id, status],
+  );
+  const row = result.rows[0];
+  return row === undefined ? undefined : toEmployee(row);
 }

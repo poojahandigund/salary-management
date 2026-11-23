@@ -447,3 +447,116 @@ describe('PATCH /api/employees/:id', () => {
     });
   });
 });
+
+describe('deactivating and reactivating', () => {
+  const act = (id: number | string, action: 'deactivate' | 'reactivate') =>
+    request(app).post(`/api/employees/${id}/${action}`).set('Cookie', cookie);
+
+  it('requires a login', async () => {
+    const res = await request(app).post('/api/employees/1/deactivate');
+
+    expect(res.status).toBe(401);
+  });
+
+  it('deactivates an employee and returns them as inactive', async () => {
+    const created = await createOne();
+
+    const res = await act(created.id, 'deactivate');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: created.id, status: 'inactive' });
+    expect((await get(created.id)).body.status).toBe('inactive');
+  });
+
+  it('moves updatedAt when the status changes', async () => {
+    const created = await createOne();
+
+    const res = await act(created.id, 'deactivate');
+
+    expect(Date.parse(res.body.updatedAt)).toBeGreaterThan(Date.parse(created.updatedAt));
+  });
+
+  it('keeps the employee and all their salary history (nothing is deleted)', async () => {
+    const created = await createOne();
+    const employeesBefore = await count('employees');
+    const salariesBefore = await count('salary_records');
+
+    await act(created.id, 'deactivate').expect(200);
+
+    expect(await count('employees')).toBe(employeesBefore);
+    expect(await count('salary_records')).toBe(salariesBefore);
+  });
+
+  it('can be repeated: deactivating twice is fine and changes nothing the second time', async () => {
+    const created = await createOne();
+    const first = await act(created.id, 'deactivate');
+
+    const second = await act(created.id, 'deactivate');
+
+    expect(second.status).toBe(200);
+    expect(second.body.status).toBe('inactive');
+    expect(second.body.updatedAt).toBe(first.body.updatedAt);
+  });
+
+  it('reactivates an inactive employee', async () => {
+    const created = await createOne();
+    await act(created.id, 'deactivate').expect(200);
+
+    const res = await act(created.id, 'reactivate');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('active');
+  });
+
+  it('reactivating an already active employee changes nothing', async () => {
+    const created = await createOne();
+
+    const res = await act(created.id, 'reactivate');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(created);
+  });
+
+  it('removes the employee from the default list but keeps them under status=inactive', async () => {
+    const created = await createOne({ firstName: 'Zebulon', lastName: 'Quillfeather' });
+    await act(created.id, 'deactivate').expect(200);
+
+    const active = await request(app).get('/api/employees?q=quillfeather').set('Cookie', cookie);
+    const inactive = await request(app)
+      .get('/api/employees?q=quillfeather&status=inactive')
+      .set('Cookie', cookie);
+
+    expect(active.body.total).toBe(0);
+    expect(inactive.body.items.map((e: Employee) => e.id)).toEqual([created.id]);
+  });
+
+  it('answers 404 for an unknown or malformed id', async () => {
+    for (const action of ['deactivate', 'reactivate'] as const) {
+      for (const id of [987_654, 'abc', '0']) {
+        const res = await act(id, action);
+        expect(res.status, `${action} ${id}`).toBe(404);
+        expect(res.body.error.code).toBe('EMPLOYEE_NOT_FOUND');
+      }
+    }
+  });
+
+  it('does not offer a way to delete an employee', async () => {
+    const created = await createOne();
+
+    const res = await request(app).delete(`/api/employees/${created.id}`).set('Cookie', cookie);
+
+    expect(res.status).toBe(404);
+    expect((await get(created.id)).status).toBe(200);
+  });
+
+  it('only accepts POST for these actions', async () => {
+    const created = await createOne();
+
+    const res = await request(app)
+      .get(`/api/employees/${created.id}/deactivate`)
+      .set('Cookie', cookie);
+
+    expect(res.status).toBe(404);
+    expect((await get(created.id)).body.status).toBe('active');
+  });
+});
