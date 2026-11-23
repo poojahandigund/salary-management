@@ -25,6 +25,7 @@ The choices below favour tools that are well known, simple to reason about, and 
 | Seed data    | @faker-js/faker with a fixed seed           | Realistic, reproducible 10,000-employee dataset.                                                                           |
 | Auth         | bcrypt + JWT in an httpOnly cookie          | See [Authentication](#authentication).                                                                                     |
 | Security     | helmet, cors, express-rate-limit            | Safe HTTP headers, only the frontend origin may call the API, and brute-force protection on login.                         |
+| API build    | esbuild                                     | Bundles the API with the shared package into one file that plain `node` can run; other dependencies stay external.         |
 | Logging      | pino + pino-http                            | Structured JSON request logs with sensitive fields (cookies, passwords) redacted.                                          |
 | Testing      | Vitest, React Testing Library, Supertest    | See [Testing](#testing).                                                                                                   |
 | Code quality | ESLint + Prettier                           | Consistent style and catches common mistakes.                                                                              |
