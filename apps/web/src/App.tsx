@@ -1,12 +1,8 @@
-import { Route, Routes } from 'react-router';
+﻿import { Route, Routes } from 'react-router';
 import { RequireAuth } from './auth/RequireAuth';
-import { AppShell } from './components/AppShell';
+import { AppShell, HomeRedirect, NotFoundPage } from './components/AppShell';
+import { EmployeeDirectoryPage } from './pages/EmployeeDirectoryPage';
 import { LoginPage } from './pages/LoginPage';
-
-/** Placeholder until the employee pages are added in the next commits. */
-function HomePage() {
-  return <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>;
-}
 
 export function App() {
   return (
@@ -15,7 +11,9 @@ export function App() {
       {/* Everything below needs a login. */}
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
-          <Route index element={<HomePage />} />
+          <Route index element={<HomeRedirect />} />
+          <Route path="/employees" element={<EmployeeDirectoryPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>
     </Routes>

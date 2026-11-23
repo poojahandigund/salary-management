@@ -43,7 +43,7 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 - [x] `feat(api): deactivate employee (soft delete)`
 - [x] `feat(web): vite + react + tailwind + shadcn/ui scaffold with app shell`
 - [x] `feat(web): login page, API client and protected routes`
-- [ ] `feat(web): employee directory table with server-side paging, sort and filters`
+- [x] `feat(web): employee directory table with server-side paging, sort and filters`
 - [ ] `feat(web): employee form (react-hook-form + zod) for add and edit`
 - [ ] `feat(web): employee detail page and deactivate action`
 
