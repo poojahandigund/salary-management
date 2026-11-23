@@ -36,6 +36,7 @@ const app = createApp({
   // The session cookie is HTTPS-only in production; local development runs over plain http.
   cookieSecure: env.NODE_ENV === 'production',
   trustProxyHops: env.TRUST_PROXY,
+  webRoot: env.WEB_DIST_DIR,
 });
 
 const server = app.listen(env.PORT, () => {

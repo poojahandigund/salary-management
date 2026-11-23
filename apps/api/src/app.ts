@@ -8,6 +8,7 @@ import type { AuthConfig } from './auth/config';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { DEFAULT_LOGIN_RATE_LIMIT, type LoginRateLimitOptions } from './middleware/loginRateLimit';
 import { createRequestLogger } from './middleware/requestLogger';
+import { createWebHandlers } from './middleware/serveWeb';
 import { createRequireAuth } from './middleware/requireAuth';
 import { createPublicAuthRouter, createSessionRouter } from './routes/auth';
 import { createEmployeesRouter } from './routes/employees';
@@ -30,6 +31,11 @@ export interface AppOptions {
    * real client address, which the login rate limit relies on, when deployed behind a proxy.
    */
   trustProxyHops?: number;
+  /**
+   * Folder with the built web app. When set, this server also serves the web app, which is how
+   * it runs in production. Leave it out in development, where the Vite dev server does that.
+   */
+  webRoot?: string;
   /** The clock, used to check that a salary change is not dated in the future. Tests replace it. */
   now?: () => Date;
 }
@@ -46,6 +52,7 @@ export function createApp({
   cookieSecure = false,
   loginRateLimit = DEFAULT_LOGIN_RATE_LIMIT,
   trustProxyHops = 0,
+  webRoot,
   now,
 }: AppOptions): Express {
   const app = express();
@@ -73,6 +80,10 @@ export function createApp({
     res.json({ status: 'ok' });
   });
 
+  // The web app's files are public (they hold no data), so they sit before the login guard.
+  const web = webRoot === undefined ? undefined : createWebHandlers(webRoot);
+  if (web) app.use(web.files);
+
   // Salary data must never be kept by a browser cache or a shared proxy cache.
   app.use('/api', (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -90,6 +101,9 @@ export function createApp({
   app.use('/api/auth', createSessionRouter());
   app.use('/api/employees', createEmployeesRouter({ pool, now }));
   app.use('/api/insights', createInsightsRouter({ pool }));
+
+  // Browser addresses such as /employees/7 get the web app. API addresses never do.
+  if (web) app.use(web.pages);
 
   // Keep these last: unmatched routes become a JSON 404, and all errors end up in one handler.
   app.use(notFoundHandler);

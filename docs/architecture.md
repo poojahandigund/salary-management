@@ -34,7 +34,7 @@ flowchart TB
 
 - The browser talks to one place: the API. Every `/api` route except login sits behind the auth guard.
 - The web app and the API share one package of reference data (countries, currencies, departments, job titles) and Zod schemas. A rule such as "level is 1 to 10" is written once and checked in the form, in the API, and again by a database constraint.
-- In development, the Vite dev server forwards `/api` to the API, so the browser sees one site. In production a single service is meant to serve the built web app and the API, for the same reason: the login cookie is `SameSite=Strict`, which needs one site and so needs no CSRF token.
+- In development, the Vite dev server forwards `/api` to the API, so the browser sees one site. In production a single service serves the built web app and the API (set WEB_DIST_DIR), for the same reason: the login cookie is `SameSite=Strict`, which needs one site and so needs no CSRF token.
 
 ## What happens when HR changes a salary
 

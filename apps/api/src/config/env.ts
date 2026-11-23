@@ -9,6 +9,13 @@ const envSchema = z.object({
   // Number of reverse proxies in front of the server (0 = none, the local default). Set it
   // when deployed behind one, so the login rate limit sees real client addresses.
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
+  // Folder with the built web app (npm run build -w @acme/web). When set, this server serves
+  // the web app too. Leave it unset in development, where the Vite dev server does that.
+  WEB_DIST_DIR: z
+    .string()
+    .trim()
+    .transform((value) => (value === '' ? undefined : value))
+    .optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().refine((value) => /^postgres(ql)?:\/\//.test(value), {
     // The message deliberately does not include the value: it contains the DB password.

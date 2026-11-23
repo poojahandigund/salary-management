@@ -114,6 +114,16 @@ Run these from the repository root.
 
 The tests are fast and need no setup beyond the test database: each test creates its own data and cleans up after itself.
 
+## Run it as one service (like production)
+
+In production one Node.js service serves both the API and the built web app, so the login cookie works without any extra setup. To try that locally:
+
+1. Build both: `npm run build -w @acme/web` and `npm run build -w @acme/api`.
+2. In `.env`, set `WEB_DIST_DIR=../web/dist` (see `.env.example`).
+3. Run `npm run start -w @acme/api` and open <http://localhost:4000>.
+
+With `NODE_ENV=production` the session cookie is sent over HTTPS only, so a production run needs HTTPS (a hosting platform provides it). Behind a platform's proxy, also set `TRUST_PROXY=1`.
+
 ## Project layout
 
 ```text

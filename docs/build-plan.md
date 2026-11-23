@@ -68,6 +68,7 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 - [x] `perf: add indexes and record query timings at 10k rows`
 - [x] `test: fill coverage gaps, frontend component tests`
 - [x] `docs: README with setup, seed and run steps; architecture diagram and trade-offs`
+- [x] `feat(api): serve the built web app from the API service (one site for web and API)`
 - [ ] `chore: add docker-compose for one-command local Postgres (deferred from Phase 0)`
 - [ ] `chore: deployment`, then the demo video
 
