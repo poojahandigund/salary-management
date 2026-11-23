@@ -167,6 +167,12 @@ describe('employeeSchema (API response)', () => {
     id: 42,
     ...validInput,
     status: 'active',
+    currentSalary: {
+      amountMinor: 12_000_000,
+      currency: 'INR',
+      amountUsdMinor: 144_000,
+      effectiveDate: '2024-04-01',
+    },
     createdAt: '2026-01-01T09:30:00.000Z',
     updatedAt: '2026-01-02T10:00:00.000Z',
   };
@@ -176,7 +182,7 @@ describe('employeeSchema (API response)', () => {
   });
 
   it('ignores extra fields, so adding one to the API does not break older clients', () => {
-    expect(employeeSchema.parse({ ...response, currentSalary: 1 })).toEqual(response);
+    expect(employeeSchema.parse({ ...response, nickname: 'Ash' })).toEqual(response);
   });
 
   it.each([
@@ -187,7 +193,20 @@ describe('employeeSchema (API response)', () => {
     ],
     ['an unknown status', { status: 'retired' }],
     ['a timestamp without a time', { createdAt: '2026-01-01' }],
+    ['a missing current salary', { currentSalary: undefined }],
+    [
+      'a current salary without its US-dollar equivalent',
+      { currentSalary: { ...response.currentSalary, amountUsdMinor: undefined } },
+    ],
+    [
+      'a current salary in a currency without a rate',
+      { currentSalary: { ...response.currentSalary, currency: 'JPY' } },
+    ],
   ])('rejects %s', (_label, change) => {
     expect(employeeSchema.safeParse({ ...response, ...change }).success).toBe(false);
+  });
+
+  it('accepts a null current salary, for an employee with no salary record', () => {
+    expect(employeeSchema.parse({ ...response, currentSalary: null }).currentSalary).toBeNull();
   });
 });

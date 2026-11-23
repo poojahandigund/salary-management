@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CURRENCY_CODES } from '@acme/shared';
 import { formatMoney, minorToMajorText, parseMajorToMinor } from './money';
 
 describe('parseMajorToMinor', () => {
@@ -65,5 +66,16 @@ describe('formatMoney', () => {
     expect(formatMoney(12_000_000, 'INR')).toBe('\u20B9120,000.00');
     expect(formatMoney(5_000_000, 'GBP')).toBe('\u00A350,000.00');
     expect(formatMoney(5_000_000, 'EUR')).toBe('\u20AC50,000.00');
+  });
+
+  it('tells the dollar currencies apart, so a Singapore salary is not mistaken for a US one', () => {
+    expect(formatMoney(5_000_000, 'CAD')).toBe('CA$50,000.00');
+    expect(formatMoney(5_000_000, 'AUD')).toBe('A$50,000.00');
+    expect(formatMoney(5_000_000, 'SGD')).toBe('SGD\u00A050,000.00');
+  });
+
+  it('gives every supported currency a different look for the same amount', () => {
+    const shown = CURRENCY_CODES.map((currency) => formatMoney(5_000_000, currency));
+    expect(new Set(shown).size).toBe(CURRENCY_CODES.length);
   });
 });

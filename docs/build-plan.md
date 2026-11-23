@@ -49,10 +49,10 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 
 ## Phase 5: Salary history and multi-currency
 
-- [ ] `feat(api): currency conversion helpers`
-- [ ] `feat(api): add salary change and read salary history`
-- [ ] `feat(api): include current salary and USD equivalent in employee responses`
-- [ ] `feat(web): salary history list and salary change form`
+- [x] `feat(api): currency conversion helpers`
+- [x] `feat(api): add salary change and read salary history`
+- [x] `feat(api): include current salary and USD equivalent in employee responses`
+- [x] `feat(web): salary history list and salary change form`
 
 ## Phase 6: Insights
 

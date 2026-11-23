@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CURRENCY_CODES } from '../reference-data/currencies';
-import { MAX_AMOUNT_MINOR, salaryChangeInputSchema, salaryRecordSchema } from './salary';
+import {
+  MAX_AMOUNT_MINOR,
+  salaryChangeInputSchema,
+  salaryHistorySchema,
+  salaryRecordSchema,
+} from './salary';
 
 const validChange = {
   amountMinor: 8_500_000,
@@ -68,6 +73,7 @@ describe('salaryRecordSchema (API response)', () => {
     employeeId: 42,
     amountMinor: 8_500_000,
     currency: 'INR',
+    amountUsdMinor: 102_000,
     effectiveDate: '2025-04-01',
     reason: 'hire',
     createdAt: '2025-04-01T00:00:00.000Z',
@@ -87,5 +93,44 @@ describe('salaryRecordSchema (API response)', () => {
 
   it('rejects a currency we have no exchange rate for', () => {
     expect(salaryRecordSchema.safeParse({ ...record, currency: 'JPY' }).success).toBe(false);
+  });
+
+  it('allows a US-dollar equivalent of 0 (a tiny amount in a low-value currency)', () => {
+    expect(salaryRecordSchema.safeParse({ ...record, amountUsdMinor: 0 }).success).toBe(true);
+  });
+
+  it.each([
+    ['negative', -1],
+    ['fractional', 10.5],
+    ['text', '102000'],
+    ['missing', undefined],
+  ])('rejects a %s US-dollar equivalent', (_label, amountUsdMinor) => {
+    expect(salaryRecordSchema.safeParse({ ...record, amountUsdMinor }).success).toBe(false);
+  });
+});
+
+describe('salaryHistorySchema (API response)', () => {
+  const record = {
+    id: 7,
+    employeeId: 42,
+    amountMinor: 8_500_000,
+    currency: 'INR',
+    amountUsdMinor: 102_000,
+    effectiveDate: '2025-04-01',
+    reason: 'hire',
+    createdAt: '2025-04-01T00:00:00.000Z',
+  };
+
+  it('accepts a list of records, including an empty one', () => {
+    expect(salaryHistorySchema.safeParse({ items: [record, { ...record, id: 8 }] }).success).toBe(
+      true,
+    );
+    expect(salaryHistorySchema.safeParse({ items: [] }).success).toBe(true);
+  });
+
+  it('rejects an invalid record inside the list', () => {
+    expect(salaryHistorySchema.safeParse({ items: [{ ...record, currency: 'JPY' }] }).success).toBe(
+      false,
+    );
   });
 });

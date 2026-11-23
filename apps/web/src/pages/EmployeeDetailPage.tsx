@@ -14,6 +14,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { SalaryAmount } from '@/components/employees/SalaryAmount';
+import { SalaryHistory } from '@/components/employees/SalaryHistory';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -135,9 +137,14 @@ export function EmployeeDetailPage() {
             <Detail label="Department">{person.department}</Detail>
             <Detail label="Job title">{person.jobTitle}</Detail>
             <Detail label="Level">{formatLevel(person.level)}</Detail>
+            <Detail label="Current salary">
+              <SalaryAmount salary={person.currentSalary} />
+            </Detail>
           </dl>
         </CardContent>
       </Card>
+
+      <SalaryHistory employee={person} />
     </div>
   );
 }

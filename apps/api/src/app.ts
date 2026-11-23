@@ -29,6 +29,8 @@ export interface AppOptions {
    * real client address, which the login rate limit relies on, when deployed behind a proxy.
    */
   trustProxyHops?: number;
+  /** The clock, used to check that a salary change is not dated in the future. Tests replace it. */
+  now?: () => Date;
 }
 
 /**
@@ -43,6 +45,7 @@ export function createApp({
   cookieSecure = false,
   loginRateLimit = DEFAULT_LOGIN_RATE_LIMIT,
   trustProxyHops = 0,
+  now,
 }: AppOptions): Express {
   const app = express();
 
@@ -84,7 +87,7 @@ export function createApp({
   app.use('/api', createRequireAuth({ jwtSecret: auth.jwtSecret, username: auth.username }));
 
   app.use('/api/auth', createSessionRouter());
-  app.use('/api/employees', createEmployeesRouter({ pool }));
+  app.use('/api/employees', createEmployeesRouter({ pool, now }));
 
   // Keep these last: unmatched routes become a JSON 404, and all errors end up in one handler.
   app.use(notFoundHandler);

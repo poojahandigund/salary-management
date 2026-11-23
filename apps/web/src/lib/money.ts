@@ -23,12 +23,13 @@ export function parseMajorToMinor(text: string): number | null {
   return Number.isSafeInteger(minor) ? minor : null;
 }
 
-/** "8500050" in INR becomes "₹85,000.50". For display only. */
+/** "8500050" in INR becomes "₹85,000.50"; Canadian dollars show as "CA$", so no two currencies look alike. For display only. */
 export function formatMoney(amountMinor: number, currency: CurrencyCode): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-    currencyDisplay: 'narrowSymbol',
+    // Not 'narrowSymbol': that shows CAD, AUD and SGD as a bare $, which looks like US dollars.
+    currencyDisplay: 'symbol',
   }).format(amountMinor / 100);
 }
 

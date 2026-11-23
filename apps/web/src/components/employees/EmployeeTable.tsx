@@ -1,6 +1,7 @@
-﻿import type { Employee, EmployeeSortField, ListEmployeesQuery } from '@acme/shared';
+import type { Employee, EmployeeSortField, ListEmployeesQuery } from '@acme/shared';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router';
+import { SalaryAmount } from '@/components/employees/SalaryAmount';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -27,6 +28,7 @@ const COLUMNS: Column[] = [
   { header: 'Department', sortField: 'department' },
   { header: 'Job title', sortField: 'jobTitle' },
   { header: 'Level', sortField: 'level' },
+  { header: 'Salary', sortField: 'salary' },
   { header: 'Hired', sortField: 'hireDate' },
   { header: 'Status' },
 ];
@@ -116,6 +118,9 @@ export function EmployeeTable({
                   <TableCell>{employee.department}</TableCell>
                   <TableCell>{employee.jobTitle}</TableCell>
                   <TableCell>{formatLevel(employee.level)}</TableCell>
+                  <TableCell>
+                    <SalaryAmount salary={employee.currentSalary} />
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {formatDate(employee.hireDate)}
                   </TableCell>

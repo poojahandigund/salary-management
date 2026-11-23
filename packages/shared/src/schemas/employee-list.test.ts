@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PAGE_SIZE,
+  EMPLOYEE_SORT_FIELDS,
   MAX_PAGE_SIZE,
   MAX_SEARCH_LENGTH,
   listEmployeesQuerySchema,
@@ -45,6 +46,14 @@ describe('listEmployeesQuerySchema', () => {
       sort: 'hireDate',
       order: 'desc',
     });
+  });
+
+  it.each(EMPLOYEE_SORT_FIELDS)('accepts sorting by %s', (sort) => {
+    expect(listEmployeesQuerySchema.parse({ sort }).sort).toBe(sort);
+  });
+
+  it('can sort by salary', () => {
+    expect(EMPLOYEE_SORT_FIELDS).toContain('salary');
   });
 
   it('treats an empty or blank search as no search', () => {

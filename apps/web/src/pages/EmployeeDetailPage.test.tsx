@@ -2,7 +2,7 @@
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '@/App';
-import { makeEmployee, makePage } from '@/test/fixtures';
+import { makeEmployee, makePage, makeSalaryRecord } from '@/test/fixtures';
 import { apiError, mockApi, reply } from '@/test/mock-api';
 import { renderWithProviders } from '@/test/render';
 
@@ -29,6 +29,9 @@ function openAt(route: string, routes: Routes = {}) {
   const api = mockApi({
     'GET /api/auth/me': session,
     'GET /api/employees': reply(200, makePage([asha])),
+    'GET /api/employees/7/salary-history': reply(200, {
+      items: [makeSalaryRecord({ employeeId: 7 })],
+    }),
     ...routes,
   });
   const user = userEvent.setup({ delay: null });
@@ -54,6 +57,32 @@ describe('employee detail page', () => {
       expect(text).toContain(expected);
     }
     expect(screen.getByText('Active')).toBeInTheDocument();
+  });
+
+  it('shows the current salary with its US-dollar equivalent', async () => {
+    openAt('/employees/7', { 'GET /api/employees/7': reply(200, asha) });
+
+    await screen.findByRole('heading', { name: 'Asha Rao' });
+    const details = screen.getByText('Current salary').closest('div') as HTMLElement;
+    expect(details.textContent).toContain('₹1,500,000.00');
+    expect(details.textContent).toContain('≈ $18,000.00');
+  });
+
+  it('shows a dash as the current salary when there is no salary record', async () => {
+    openAt('/employees/7', {
+      'GET /api/employees/7': reply(200, { ...asha, currentSalary: null }),
+    });
+
+    await screen.findByRole('heading', { name: 'Asha Rao' });
+    const details = screen.getByText('Current salary').closest('div') as HTMLElement;
+    expect(details.textContent).toContain('—');
+  });
+
+  it('shows the salary history below the details, and offers to change the salary', async () => {
+    openAt('/employees/7', { 'GET /api/employees/7': reply(200, asha) });
+
+    expect(await screen.findByRole('heading', { name: 'Salary history' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Change salary' })).toBeInTheDocument();
   });
 
   it('links to the edit form and back to the directory', async () => {
