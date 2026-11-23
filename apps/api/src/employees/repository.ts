@@ -1,5 +1,17 @@
-import type { Employee, EmployeeSortField, ListEmployeesQuery, SortDirection } from '@acme/shared';
-import type { Pool } from 'pg';
+import {
+  type CreateEmployeeInput,
+  type DepartmentName,
+  type Employee,
+  type EmployeeSortField,
+  type JobTitle,
+  type ListEmployeesQuery,
+  type SortDirection,
+  type UpdateEmployeeInput,
+  currencyForCountry,
+  isJobTitleInDepartment,
+} from '@acme/shared';
+import type { Pool, PoolClient } from 'pg';
+import { AppError } from '../lib/errors';
 
 /** The only thing the repository needs from the database: run a parameterised query. */
 export type Db = Pick<Pool, 'query'>;
@@ -138,4 +150,176 @@ export async function listEmployees(
     items: rows.rows.map(toEmployee),
     total: Number(count.rows[0]?.total ?? 0),
   };
+}
+
+/** Returns the employee, or undefined when there is no employee with that id. */
+export async function findEmployee(db: Db, id: number): Promise<Employee | undefined> {
+  const result = await db.query<EmployeeRow>(
+    `SELECT ${EMPLOYEE_COLUMNS} FROM employees WHERE id = $1`,
+    [id],
+  );
+  const row = result.rows[0];
+  return row === undefined ? undefined : toEmployee(row);
+}
+
+const EMAIL_TAKEN = () =>
+  new AppError(409, 'EMAIL_ALREADY_EXISTS', 'An employee with this email already exists', [
+    { path: 'email', message: 'An employee with this email already exists' },
+  ]);
+
+/** True when a failed query was the unique-email rule being broken. */
+function isDuplicateEmail(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const { code, constraint } = error as { code?: unknown; constraint?: unknown };
+  return code === '23505' && constraint === 'employees_email_unique';
+}
+
+/**
+ * Runs work inside a transaction on its own connection, committing on success and
+ * rolling back on any error.
+ *
+ * It uses a connection checked out with pool.connect() rather than pool.query on
+ * purpose: when a pool.query statement fails (as a duplicate email routinely does), the
+ * pg driver throws that connection away and the next request pays for a new one. A
+ * checked-out connection survives the failed statement once the transaction is rolled back.
+ */
+async function inTransaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  // If the rollback itself fails the connection is broken, so it is destroyed, not reused.
+  let discardConnection = false;
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {
+      discardConnection = true;
+    });
+    throw error;
+  } finally {
+    client.release(discardConnection);
+  }
+}
+
+/**
+ * Creates an employee together with their first salary record (reason hire, effective on
+ * the hire date, in the currency of the employee's country). Both rows are saved or neither.
+ * Throws a 409 when the email is already used (ignoring case).
+ */
+export async function createEmployee(pool: Pool, input: CreateEmployeeInput): Promise<Employee> {
+  try {
+    return await inTransaction(pool, async (client) => {
+      const inserted = await client.query<EmployeeRow>(
+        `INSERT INTO employees
+           (first_name, last_name, email, country_code, department, job_title, level, hire_date)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING ${EMPLOYEE_COLUMNS}`,
+        [
+          input.firstName,
+          input.lastName,
+          input.email,
+          input.countryCode,
+          input.department,
+          input.jobTitle,
+          input.level,
+          input.hireDate,
+        ],
+      );
+      const row = inserted.rows[0] as EmployeeRow;
+
+      await client.query(
+        `INSERT INTO salary_records (employee_id, amount_minor, currency, effective_date, reason)
+         VALUES ($1, $2, $3, $4, 'hire')`,
+        [row.id, input.startingSalaryMinor, currencyForCountry(input.countryCode), input.hireDate],
+      );
+
+      return toEmployee(row);
+    });
+  } catch (error) {
+    if (isDuplicateEmail(error)) throw EMAIL_TAKEN();
+    throw error;
+  }
+}
+
+// Which database column each editable field maps to. Only keys of this list can ever
+// reach the SQL text, and only these fixed names, never anything from the request.
+const UPDATE_COLUMNS: Record<keyof UpdateEmployeeInput, string> = {
+  firstName: 'first_name',
+  lastName: 'last_name',
+  email: 'email',
+  countryCode: 'country_code',
+  department: 'department',
+  jobTitle: 'job_title',
+  level: 'level',
+  hireDate: 'hire_date',
+};
+
+const notFound = () => new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee not found');
+
+const validationFailure = (path: string, message: string) =>
+  new AppError(400, 'VALIDATION_ERROR', 'Request validation failed', [{ path, message }]);
+
+/**
+ * Applies a partial update and returns the employee. Throws 404 if there is no such
+ * employee, 400 if the merged department and job title do not belong together or the new
+ * hire date would be after the employee's first salary record, and 409 for a duplicate email.
+ * The row is locked while it is checked, so two edits cannot interleave.
+ */
+export async function updateEmployee(
+  pool: Pool,
+  id: number,
+  changes: UpdateEmployeeInput,
+): Promise<Employee> {
+  try {
+    return await inTransaction(pool, async (client) => {
+      const current = await client.query<{ department: string; job_title: string }>(
+        'SELECT department, job_title FROM employees WHERE id = $1 FOR UPDATE',
+        [id],
+      );
+      const existing = current.rows[0];
+      if (existing === undefined) throw notFound();
+
+      // The schema can only check a department and job title that are sent together. Now
+      // that the stored values are known, check the combination that will exist afterwards.
+      // Stored values are text; they were validated when they were saved.
+      const department = changes.department ?? (existing.department as DepartmentName);
+      const jobTitle = changes.jobTitle ?? (existing.job_title as JobTitle);
+      if (!isJobTitleInDepartment(department, jobTitle)) {
+        throw validationFailure(
+          'jobTitle',
+          'This job title does not belong to the chosen department',
+        );
+      }
+
+      if (changes.hireDate !== undefined) {
+        const first = await client.query<{ first_effective: string | null }>(
+          'SELECT min(effective_date)::text AS first_effective FROM salary_records WHERE employee_id = $1',
+          [id],
+        );
+        const firstEffective = first.rows[0]?.first_effective;
+        if (firstEffective && changes.hireDate > firstEffective) {
+          throw validationFailure(
+            'hireDate',
+            `Hire date cannot be after the first salary record (${firstEffective})`,
+          );
+        }
+      }
+
+      const entries = Object.entries(changes) as [keyof UpdateEmployeeInput, unknown][];
+      const assignments = entries.map(
+        ([field], index) => `${UPDATE_COLUMNS[field]} = $${index + 2}`,
+      );
+      const updated = await client.query<EmployeeRow>(
+        `UPDATE employees SET ${assignments.join(', ')}, updated_at = now()
+         WHERE id = $1
+         RETURNING ${EMPLOYEE_COLUMNS}`,
+        [id, ...entries.map(([, value]) => value)],
+      );
+      return toEmployee(updated.rows[0] as EmployeeRow);
+    });
+  } catch (error) {
+    if (isDuplicateEmail(error)) throw EMAIL_TAKEN();
+    throw error;
+  }
 }

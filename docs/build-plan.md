@@ -39,7 +39,7 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 ## Phase 4: Employees (backend, then UI)
 
 - [x] `feat(api): list employees with search, filters, sort and pagination`
-- [ ] `feat(api): get, create and update employee`
+- [x] `feat(api): get, create and update employee`
 - [ ] `feat(api): deactivate employee (soft delete)`
 - [ ] `feat(web): vite + react + tailwind + shadcn/ui scaffold with app shell`
 - [ ] `feat(web): login page, API client and protected routes`

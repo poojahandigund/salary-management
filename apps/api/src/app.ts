@@ -84,7 +84,7 @@ export function createApp({
   app.use('/api', createRequireAuth({ jwtSecret: auth.jwtSecret, username: auth.username }));
 
   app.use('/api/auth', createSessionRouter());
-  app.use('/api/employees', createEmployeesRouter({ db: pool }));
+  app.use('/api/employees', createEmployeesRouter({ pool }));
 
   // Keep these last: unmatched routes become a JSON 404, and all errors end up in one handler.
   app.use(notFoundHandler);

@@ -1,6 +1,7 @@
 import { createApp } from './app';
 import { authConfigFrom } from './auth/config';
 import { type Env, parseEnv } from './config/env';
+import { syncExchangeRates } from './db/exchange-rates';
 import { createPool } from './db/pool';
 import { createLogger } from './lib/logger';
 
@@ -20,6 +21,12 @@ const logger = createLogger(env.LOG_LEVEL);
 
 // The pool is shared by all requests and closed on shutdown.
 const pool = createPool(env.DATABASE_URL, logger);
+
+// Salary records need the exchange rates to exist. Idempotent. If the database has not been
+// migrated yet this fails; say so clearly but keep serving (/health still works).
+syncExchangeRates(pool).catch((err: unknown) => {
+  logger.error({ err }, 'Could not load exchange rates. Have the migrations been run?');
+});
 
 const app = createApp({
   corsOrigin: env.CORS_ORIGIN,

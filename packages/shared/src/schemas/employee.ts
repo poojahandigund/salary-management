@@ -7,6 +7,7 @@ import {
 } from '../reference-data/departments';
 import { EMPLOYEE_STATUSES } from '../reference-data/enums';
 import { MAX_LEVEL, MIN_LEVEL } from '../reference-data/levels';
+import { amountMinorSchema } from './salary';
 
 /**
  * Zod schemas for employees, shared by the API (to validate requests) and the web app
@@ -60,11 +61,13 @@ const TITLE_DEPARTMENT_MISMATCH = {
  * Body of "create employee".
  *
  * Strict: unknown keys are rejected instead of silently dropped, so a client cannot
- * sneak in fields such as `status` or `id`. The initial salary is not part of this schema
- * yet; the create-employee endpoint decides how to take it and extends this schema.
+ * sneak in fields such as `status` or `id`. It includes the starting salary, because an
+ * employee always has a salary: the API records it as the first salary record (reason
+ * `hire`, effective on the hire date) in the same transaction as the employee. Its currency
+ * is the one of the employee's country, so it is not sent.
  */
 export const createEmployeeInputSchema = z
-  .strictObject(employeeFields)
+  .strictObject({ ...employeeFields, startingSalaryMinor: amountMinorSchema })
   .refine((employee) => isJobTitleInDepartment(employee.department, employee.jobTitle), {
     ...TITLE_DEPARTMENT_MISMATCH,
   });

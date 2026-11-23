@@ -28,6 +28,7 @@ describe('shared schemas vs database constraints', () => {
     jobTitle: 'Software Engineer',
     level: 3,
     hireDate: '2022-04-01',
+    startingSalaryMinor: 12_000_000,
   };
 
   /** Validates `input` with the shared schema, then inserts the result as an employee. */
