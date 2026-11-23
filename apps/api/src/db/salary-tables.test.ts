@@ -186,5 +186,13 @@ describe('salary tables', () => {
 
       expect(rows[0].indexdef).toContain('(employee_id, effective_date DESC, id DESC)');
     });
+
+    it('has an index that serves the directory’s default order (by name)', async () => {
+      const { rows } = await db.query(
+        "SELECT indexdef FROM pg_indexes WHERE indexname = 'employees_name_idx'",
+      );
+
+      expect(rows[0].indexdef).toContain('(lower(last_name), lower(first_name), id)');
+    });
   });
 });

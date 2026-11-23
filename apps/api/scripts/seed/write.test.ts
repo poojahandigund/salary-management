@@ -202,6 +202,27 @@ describe('writeDataset and seedDatabase', () => {
       await db.query('BEGIN'); // so afterEach has a transaction to roll back
     });
 
+    it('updates the table statistics, so the first queries after seeding get good plans', async () => {
+      await db.query('ROLLBACK');
+      await db.query('TRUNCATE salary_records, employees RESTART IDENTITY');
+      const statistics = () =>
+        db
+          .query('SELECT relname, reltuples::int AS rows FROM pg_class WHERE relname = ANY($1)', [
+            ['employees', 'salary_records'],
+          ])
+          .then(({ rows }) => Object.fromEntries(rows.map((r) => [r.relname, r.rows])));
+
+      await seedDatabase(pool, small, { reset: true });
+
+      expect(await statistics()).toEqual({
+        employees: small.employees.length,
+        salary_records: small.salaryRecords.length,
+      });
+
+      await db.query('TRUNCATE salary_records, employees RESTART IDENTITY');
+      await db.query('BEGIN');
+    });
+
     it('commits a complete seed when nothing goes wrong', async () => {
       await db.query('ROLLBACK');
 
