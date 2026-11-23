@@ -1,6 +1,7 @@
 import type { EmployeeSortField, ListEmployeesQuery } from '@acme/shared';
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router';
+import { Plus } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router';
 import { useEmployees } from '@/api/employees';
 import { EmployeeFilters } from '@/components/employees/EmployeeFilters';
 import { EmployeeTable } from '@/components/employees/EmployeeTable';
@@ -34,7 +35,15 @@ export function EmployeeDirectoryPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
+        <Button asChild>
+          <Link to="/employees/new">
+            <Plus aria-hidden />
+            Add employee
+          </Link>
+        </Button>
+      </div>
 
       <EmployeeFilters
         query={query}
