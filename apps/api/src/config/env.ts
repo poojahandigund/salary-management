@@ -6,6 +6,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   CORS_ORIGIN: z.url().default('http://localhost:5173'),
+  // Number of reverse proxies in front of the server (0 = none, the local default). Set it
+  // when deployed behind one, so the login rate limit sees real client addresses.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().refine((value) => /^postgres(ql)?:\/\//.test(value), {
     // The message deliberately does not include the value: it contains the DB password.

@@ -25,6 +25,7 @@ describe('parseEnv', () => {
       NODE_ENV: 'development',
       PORT: 4000,
       CORS_ORIGIN: 'http://localhost:5173',
+      TRUST_PROXY: 0,
       LOG_LEVEL: 'info',
       DATABASE_URL,
       HR_USERNAME: TEST_USERNAME,
@@ -64,6 +65,13 @@ describe('parseEnv', () => {
 
   it.each(['abc', '0', '70000', '3.5'])('rejects PORT=%s', (port) => {
     expect(() => parseEnv({ ...BASE, PORT: port })).toThrow(/PORT/);
+  });
+
+  it('reads TRUST_PROXY as a small whole number and rejects anything else', () => {
+    expect(parseEnv({ ...BASE, TRUST_PROXY: '1' }).TRUST_PROXY).toBe(1);
+    for (const value of ['-1', '6', '1.5', 'yes', 'true']) {
+      expect(() => parseEnv({ ...BASE, TRUST_PROXY: value })).toThrow(/TRUST_PROXY/);
+    }
   });
 
   it('rejects an unknown NODE_ENV', () => {

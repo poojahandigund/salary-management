@@ -1,4 +1,5 @@
 import { createApp } from './app';
+import { authConfigFrom } from './auth/config';
 import { type Env, parseEnv } from './config/env';
 import { createPool } from './db/pool';
 import { createLogger } from './lib/logger';
@@ -21,7 +22,16 @@ const logger = createLogger(env.LOG_LEVEL);
 // employees endpoints, once the schema exists.
 const pool = createPool(env.DATABASE_URL, logger);
 
-const server = createApp({ corsOrigin: env.CORS_ORIGIN, logger }).listen(env.PORT, () => {
+const app = createApp({
+  corsOrigin: env.CORS_ORIGIN,
+  logger,
+  auth: authConfigFrom(env),
+  // The session cookie is HTTPS-only in production; local development runs over plain http.
+  cookieSecure: env.NODE_ENV === 'production',
+  trustProxyHops: env.TRUST_PROXY,
+});
+
+const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'API listening');
 });
 
