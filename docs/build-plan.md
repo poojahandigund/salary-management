@@ -56,12 +56,12 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 
 ## Phase 6: Insights
 
-- [ ] `feat(api): headcount and payroll cost by country and department`
-- [ ] `feat(api): min/median/avg/max salary by country, department, job title and level`
-- [ ] `feat(api): salary distribution histogram endpoint`
-- [ ] `feat(api): outlier detection`
-- [ ] `feat(web): dashboard with summary cards and breakdown charts`
-- [ ] `feat(web): salary histogram and outliers table`
+- [x] `feat(api): headcount and payroll cost by country and department`
+- [x] `feat(api): min/median/avg/max salary by country, department, job title and level`
+- [x] `feat(api): salary distribution histogram endpoint`
+- [x] `feat(api): outlier detection`
+- [x] `feat(web): dashboard with summary cards and breakdown charts`
+- [x] `feat(web): salary histogram and outliers table`
 
 ## Phase 7: Hardening and handover
 

@@ -9,9 +9,9 @@ import {
 } from '@acme/shared';
 import { Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { FilterField } from '@/components/FilterField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { formatLevel } from '@/lib/format';
 
@@ -26,25 +26,6 @@ interface EmployeeFiltersProps {
   onChange: (patch: Partial<ListEmployeesQuery>) => void;
   onClear: () => void;
   canClear: boolean;
-}
-
-function Field({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={htmlFor} className="text-xs text-muted-foreground">
-        {label}
-      </Label>
-      {children}
-    </div>
-  );
 }
 
 export function EmployeeFilters({ query, onChange, onClear, canClear }: EmployeeFiltersProps) {
@@ -88,7 +69,7 @@ export function EmployeeFilters({ query, onChange, onClear, canClear }: Employee
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <Field label="Country" htmlFor="filter-country">
+        <FilterField label="Country" htmlFor="filter-country">
           <NativeSelect
             id="filter-country"
             value={query.country ?? ''}
@@ -105,9 +86,9 @@ export function EmployeeFilters({ query, onChange, onClear, canClear }: Employee
               </option>
             ))}
           </NativeSelect>
-        </Field>
+        </FilterField>
 
-        <Field label="Department" htmlFor="filter-department">
+        <FilterField label="Department" htmlFor="filter-department">
           <NativeSelect
             id="filter-department"
             value={query.department ?? ''}
@@ -128,9 +109,9 @@ export function EmployeeFilters({ query, onChange, onClear, canClear }: Employee
               </option>
             ))}
           </NativeSelect>
-        </Field>
+        </FilterField>
 
-        <Field label="Job title" htmlFor="filter-job-title">
+        <FilterField label="Job title" htmlFor="filter-job-title">
           <NativeSelect
             id="filter-job-title"
             value={query.jobTitle ?? ''}
@@ -147,9 +128,9 @@ export function EmployeeFilters({ query, onChange, onClear, canClear }: Employee
               </option>
             ))}
           </NativeSelect>
-        </Field>
+        </FilterField>
 
-        <Field label="Level" htmlFor="filter-level">
+        <FilterField label="Level" htmlFor="filter-level">
           <NativeSelect
             id="filter-level"
             value={query.level === undefined ? '' : String(query.level)}
@@ -166,9 +147,9 @@ export function EmployeeFilters({ query, onChange, onClear, canClear }: Employee
               </option>
             ))}
           </NativeSelect>
-        </Field>
+        </FilterField>
 
-        <Field label="Status" htmlFor="filter-status">
+        <FilterField label="Status" htmlFor="filter-status">
           <NativeSelect
             id="filter-status"
             value={query.status}
@@ -180,7 +161,7 @@ export function EmployeeFilters({ query, onChange, onClear, canClear }: Employee
             <option value="inactive">Inactive</option>
             <option value="all">All</option>
           </NativeSelect>
-        </Field>
+        </FilterField>
 
         <div className="flex items-end">
           <Button variant="ghost" onClick={onClear} disabled={!canClear} className="w-full">

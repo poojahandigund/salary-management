@@ -39,21 +39,17 @@ export const STATUS_FILTERS = [...EMPLOYEE_STATUSES, 'all'] as const;
 export type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 /** A whole number in query-string form ("3"). Rejects "", "abc" and "1.5". */
-const wholeNumber = (label: string) =>
+export const wholeNumber = (label: string) =>
   z
     .string()
     .regex(/^\d{1,9}$/, `${label} must be a whole number`)
     .transform(Number);
 
-export const listEmployeesQuerySchema = z.strictObject({
-  // Matches first name, last name or email. Each word must match somewhere ("asha rao").
-  q: z
-    .string()
-    .trim()
-    .max(MAX_SEARCH_LENGTH, `Search must be at most ${MAX_SEARCH_LENGTH} characters`)
-    // An empty search box means "no search".
-    .transform((value) => (value === '' ? undefined : value))
-    .optional(),
+/**
+ * The filters that narrow employees by who they are, in query-string form. Shared by the
+ * employee list and the insights, so both accept exactly the same values.
+ */
+export const employeeFilterFields = {
   country: z.enum(COUNTRY_CODES, 'Choose a supported country').optional(),
   department: z.enum(DEPARTMENT_NAMES, 'Choose a department').optional(),
   jobTitle: z.enum(JOB_TITLES, 'Choose a job title').optional(),
@@ -65,6 +61,18 @@ export const listEmployeesQuerySchema = z.strictObject({
         .max(MAX_LEVEL, `Level must be between ${MIN_LEVEL} and ${MAX_LEVEL}`),
     )
     .optional(),
+};
+
+export const listEmployeesQuerySchema = z.strictObject({
+  // Matches first name, last name or email. Each word must match somewhere ("asha rao").
+  q: z
+    .string()
+    .trim()
+    .max(MAX_SEARCH_LENGTH, `Search must be at most ${MAX_SEARCH_LENGTH} characters`)
+    // An empty search box means "no search".
+    .transform((value) => (value === '' ? undefined : value))
+    .optional(),
+  ...employeeFilterFields,
   // Active employees by default: the directory is about current staff.
   status: z.enum(STATUS_FILTERS, 'Status must be active, inactive or all').default('active'),
   sort: z.enum(EMPLOYEE_SORT_FIELDS, 'Choose a column to sort by').default('name'),

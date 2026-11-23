@@ -6,4 +6,5 @@ export * from './reference-data/levels';
 export * from './schemas/auth';
 export * from './schemas/employee';
 export * from './schemas/employee-list';
+export * from './schemas/insights';
 export * from './schemas/salary';

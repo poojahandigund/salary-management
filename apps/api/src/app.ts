@@ -11,6 +11,7 @@ import { createRequestLogger } from './middleware/requestLogger';
 import { createRequireAuth } from './middleware/requireAuth';
 import { createPublicAuthRouter, createSessionRouter } from './routes/auth';
 import { createEmployeesRouter } from './routes/employees';
+import { createInsightsRouter } from './routes/insights';
 
 export interface AppOptions {
   /** The one browser origin (the web app) that is allowed to call this API. */
@@ -88,6 +89,7 @@ export function createApp({
 
   app.use('/api/auth', createSessionRouter());
   app.use('/api/employees', createEmployeesRouter({ pool, now }));
+  app.use('/api/insights', createInsightsRouter({ pool }));
 
   // Keep these last: unmatched routes become a JSON 404, and all errors end up in one handler.
   app.use(notFoundHandler);

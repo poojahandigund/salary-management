@@ -1,10 +1,13 @@
-﻿import { Navigate, NavLink, Outlet } from 'react-router';
+import { Navigate, NavLink, Outlet } from 'react-router';
 import { LogOut } from 'lucide-react';
 import { useLogout, useSession } from '@/api/session';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-const NAV_LINKS = [{ to: '/employees', label: 'Employees' }];
+const NAV_LINKS = [
+  { to: '/employees', label: 'Employees' },
+  { to: '/insights', label: 'Insights' },
+];
 
 /**
  * The frame around every page after login: a header with the product name, navigation,
