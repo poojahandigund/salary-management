@@ -218,6 +218,41 @@ describe('login rate limit', () => {
 
     expect(blocked.status).toBe(429);
   });
+
+  describe('behind a reverse proxy', () => {
+    const loginFrom = (app: ReturnType<typeof createTestApp>, clientIp: string) =>
+      request(app)
+        .post('/api/auth/login')
+        .set('X-Forwarded-For', clientIp)
+        .send({ username: TEST_USERNAME, password: 'nope' });
+
+    it('limits each client address separately when the proxy is trusted', async () => {
+      const app = createTestApp({
+        loginRateLimit: { windowMs: 60_000, limit: 2 },
+        trustProxyHops: 1,
+      });
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        await loginFrom(app, '203.0.113.7');
+      }
+
+      const sameClient = await loginFrom(app, '203.0.113.7');
+      const otherClient = await loginFrom(app, '203.0.113.8');
+
+      expect(sameClient.status).toBe(429);
+      expect(otherClient.status).toBe(401);
+    });
+
+    it('ignores the forwarded address when no proxy is trusted, so it cannot be used to dodge the limit', async () => {
+      const app = createTestApp({ loginRateLimit: { windowMs: 60_000, limit: 2 } });
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        await loginFrom(app, '203.0.113.7');
+      }
+
+      const claimsToBeSomeoneElse = await loginFrom(app, '203.0.113.99');
+
+      expect(claimsToBeSomeoneElse.status).toBe(429);
+    });
+  });
 });
 
 describe('the auth guard on /api', () => {

@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { AppError } from '../lib/errors';
 import { createLogCapture } from '../../tests/helpers/log-capture';
@@ -159,6 +159,20 @@ describe('error logging', () => {
     const [entry] = capture.entries();
     expect(entry?.level).toBe(40); // warn
     expect(entry?.err).toBeUndefined();
+  });
+});
+
+describe('errorHandler after the response has started', () => {
+  it('passes the error on instead of trying to send a second response', () => {
+    const failure = new Error('failed half-way through streaming');
+    const res = { headersSent: true, status: vi.fn(), json: vi.fn() };
+    const next = vi.fn();
+
+    errorHandler(failure, { id: 'req-1' } as never, res as never, next);
+
+    expect(next).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
   });
 });
 

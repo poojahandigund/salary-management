@@ -23,4 +23,10 @@ describe('authConfigFrom', () => {
   it('uses the configured session length', () => {
     expect(authConfigFrom(parseEnv({ ...ENV, JWT_EXPIRES_IN: '30m' })).sessionSeconds).toBe(1_800);
   });
+
+  it('refuses an unreadable session length instead of silently using a default', () => {
+    const env = { ...parseEnv(ENV), JWT_EXPIRES_IN: 'a while' };
+
+    expect(() => authConfigFrom(env)).toThrow(RangeError);
+  });
 });

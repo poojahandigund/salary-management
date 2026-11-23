@@ -54,6 +54,52 @@ describe('App routing and login', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
+  it('recovers when the server comes back and the user presses Try again', async () => {
+    let up = false;
+    const user = userEvent.setup({ delay: null });
+    mockApi({
+      'GET /api/auth/me': () => {
+        if (!up) throw new TypeError('Failed to fetch');
+        return reply(200, session);
+      },
+    });
+    renderWithProviders(<App />);
+    await screen.findByRole('alert');
+
+    up = true;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('heading', { name: 'Employees' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows a loading indicator while it finds out whether the user is logged in', async () => {
+    mockApi({ 'GET /api/auth/me': () => new Promise(() => undefined) });
+
+    renderWithProviders(<App />);
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading');
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+  });
+
+  it('shows a page-not-found message, inside the app, for an unknown address', async () => {
+    mockApi({ 'GET /api/auth/me': reply(200, session) });
+
+    renderWithProviders(<App />, { route: '/no/such/page' });
+
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+    expect(screen.getByText('hr.manager')).toBeInTheDocument();
+  });
+
+  it('keeps a logged-out visitor out of an unknown address too', async () => {
+    mockApi({ 'GET /api/auth/me': notLoggedIn });
+
+    renderWithProviders(<App />, { route: '/no/such/page' });
+
+    expect(await screen.findByLabelText('Username')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Page not found' })).not.toBeInTheDocument();
+  });
+
   it('logs in and then shows the page that was asked for', async () => {
     let loggedIn = false;
     const api = mockApi({

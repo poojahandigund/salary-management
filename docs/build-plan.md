@@ -66,7 +66,7 @@ Seeding comes before the features so that slow queries show up early, while 10,0
 ## Phase 7: Hardening and handover
 
 - [x] `perf: add indexes and record query timings at 10k rows`
-- [ ] `test: fill coverage gaps, frontend component tests`
+- [x] `test: fill coverage gaps, frontend component tests`
 - [ ] `docs: README with setup, seed and run steps; architecture diagram and trade-offs`
 - [ ] `chore: add docker-compose for one-command local Postgres (deferred from Phase 0)`
 - [ ] `chore: deployment`, then the demo video
