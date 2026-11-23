@@ -74,6 +74,13 @@ describe('parseEnv', () => {
     }
   });
 
+  it('serves no web app unless WEB_DIST_DIR is set; an empty value counts as unset', () => {
+    expect(parseEnv(BASE).WEB_DIST_DIR).toBeUndefined();
+    expect(parseEnv({ ...BASE, WEB_DIST_DIR: '' }).WEB_DIST_DIR).toBeUndefined();
+    expect(parseEnv({ ...BASE, WEB_DIST_DIR: '  ' }).WEB_DIST_DIR).toBeUndefined();
+    expect(parseEnv({ ...BASE, WEB_DIST_DIR: '../web/dist' }).WEB_DIST_DIR).toBe('../web/dist');
+  });
+
   it('rejects an unknown NODE_ENV', () => {
     expect(() => parseEnv({ ...BASE, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
   });
